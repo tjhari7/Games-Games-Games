@@ -1,0 +1,58 @@
+[
+  {
+    "id": "1941c325-032f-4bff-adb3-4bd140554156",
+    "name": "Improv",
+    "accent": "#BA2C2C",
+    "bg": "#3A1818",
+    "protected": false,
+    "created_at": "2026-07-12T17:21:46.961Z"
+  },
+  {
+    "id": "1cbfe33d-31c6-4956-858d-179fd14420c2",
+    "name": "Unassigned",
+    "accent": "#E8DA59",
+    "bg": "#3A3718",
+    "protected": true,
+    "created_at": "2026-07-12T17:21:47.748Z"
+  },
+  {
+    "id": "1df7aabe-06c1-42a5-b522-2f953602d96d",
+    "name": "Act Out",
+    "accent": "#BA7F2C",
+    "bg": "#3A2C18",
+    "protected": false,
+    "created_at": "2026-07-12T17:21:47.208Z"
+  },
+  {
+    "id": "8ae6892a-79ee-4ce8-ad97-ed8f861fb5d1",
+    "name": "Taskmaster",
+    "accent": "#7F2CBA",
+    "bg": "#2C183A",
+    "protected": false,
+    "created_at": "2026-07-12T17:21:47.656Z"
+  },
+  {
+    "id": "a1d53eea-dc38-416a-934f-5ec2d1db5bd0",
+    "name": "Talking",
+    "accent": "#2CBA5B",
+    "bg": "#183A23",
+    "protected": false,
+    "created_at": "2026-07-12T17:21:47.418Z"
+  },
+  {
+    "id": "abc7b07a-2fb7-4c24-a056-2681865f1f32",
+    "name": "Card",
+    "accent": "#2C73BA",
+    "bg": "#18293A",
+    "protected": false,
+    "created_at": "2026-07-12T17:21:47.509Z"
+  },
+  {
+    "id": "ef033889-2268-46cb-979b-b2d32df8bbfe",
+    "name": "Drawing",
+    "accent": "#BAAE2C",
+    "bg": "#3A3718",
+    "protected": false,
+    "created_at": "2026-07-12T17:21:47.329Z"
+  }
+]

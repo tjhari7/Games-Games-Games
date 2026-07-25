@@ -1,0 +1,44 @@
+name: Backup database
+
+on:
+  schedule:
+    # Every 3 days at 12:00 UTC. The short interval does double duty: a real
+    # query against the database also keeps the free-tier Supabase project from
+    # pausing, which it does after 7 days of inactivity.
+    - cron: '0 12 */3 * *'
+  # Lets you run a backup on demand from the Actions tab.
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to push the updated backups/ files back to the repo.
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Dump tables to backups/
+        run: npm run backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Commit any changes
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- backups/; then
+            echo "Data unchanged since the last backup — nothing to commit."
+            exit 0
+          fi
+          git add backups/
+          git commit -m "Automated backup: $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push

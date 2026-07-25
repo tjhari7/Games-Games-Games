@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "node server.js",
-    "seed": "node server/seed.js"
+    "seed": "node server/seed.js",
+    "backup": "node scripts/backup.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
