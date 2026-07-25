@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "start": "node server.js",
     "seed": "node server/seed.js",
-    "backup": "node scripts/backup.js"
+    "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
