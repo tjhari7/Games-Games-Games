@@ -10,12 +10,20 @@ import { groupByLetter } from '../lib/alphabetIndex.js';
 import { fastScrollTo } from '../lib/smoothScroll.js';
 import { offsetWithinScroller } from '../lib/pageScroll.js';
 import { useScrollRestoration } from '../lib/useScrollRestoration.js';
+import { useScrollBackHeader } from '../lib/useScrollBackHeader.js';
+import { useHorizontalSwipeToHome } from '../lib/pageSwipe.js';
 
 const SpeechRecognition =
   typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
 
 export default function AllGames() {
   const navigate = useNavigate();
+  // The menu sits to Home's left, so it comes in from the left and leaves back
+  // off to the left. See lib/pageSwipe.js.
+  const { startBack, swipeClass, rootProps } = useHorizontalSwipeToHome();
+  // Header, search and filter ride in one block that scrolls away downward and
+  // comes back on any upward scroll. See lib/useScrollBackHeader.js.
+  const { ref: headerRef, collapse: collapseHeader } = useScrollBackHeader();
   const [types, setTypes] = useState([]);
   const [games, setGames] = useState([]);
   const [search, setSearch] = useState('');
@@ -59,6 +67,9 @@ export default function AllGames() {
   function jumpToLetter(letter) {
     const el = sectionRefs.current[letter];
     if (!el) return;
+    // Send the chrome away first: a jump to an earlier letter scrolls upward,
+    // which would otherwise bring it back over the section it just landed on.
+    collapseHeader();
     fastScrollTo(offsetWithinScroller(el), 16);
   }
 
@@ -117,62 +128,65 @@ export default function AllGames() {
   }, [search, typeFilter, playersFilter, timeFilter]);
 
   return (
-    <div className="page">
-      <PageHeader
-        title="All Games"
-        centered
-        actions={
-          <button className="icon-btn" onClick={() => navigate('/types')} aria-label="Edit Game Types">
-            <span className="material-symbols-outlined">more_vert</span>
-          </button>
-        }
-      />
-
-      {error && <div className="error-message">{error}</div>}
-
-      <div className="search-row">
-        <div className="search-bar">
-          <span className="material-symbols-outlined">search</span>
-          <input
-            type="text"
-            placeholder={totalCount != null ? `Search all ${totalCount} games…` : 'Search games…'}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {search && (
-            <button
-              className="search-clear-btn"
-              onClick={() => setSearch('')}
-              aria-label="Clear search"
-              type="button"
-            >
-              <span className="material-symbols-outlined">close</span>
+    <div className={`page${swipeClass}`} {...rootProps}>
+      <div className="scroll-back-header" ref={headerRef}>
+        <PageHeader
+          title="All Games"
+          centered
+          onBack={startBack}
+          actions={
+            <button className="icon-btn" onClick={() => navigate('/types')} aria-label="Edit Game Types">
+              <span className="material-symbols-outlined">more_vert</span>
             </button>
-          )}
-          {search && SpeechRecognition && <span className="search-divider" />}
-          {SpeechRecognition && (
-            <button
-              className={`mic-btn ${listening ? 'listening' : ''}`}
-              onClick={toggleVoiceSearch}
-              aria-label={listening ? 'Stop voice search' : 'Search by voice'}
-              type="button"
-            >
-              <span className="material-symbols-outlined">mic</span>
-            </button>
-          )}
-        </div>
-
-        <FilterPopover
-          types={types}
-          typeFilter={typeFilter}
-          setTypeFilter={setTypeFilter}
-          playersFilter={playersFilter}
-          setPlayersFilter={setPlayersFilter}
-          timeFilter={timeFilter}
-          setTimeFilter={setTimeFilter}
-          fields={['type', 'players', 'time']}
-          iconOnly
+          }
         />
+
+        {error && <div className="error-message">{error}</div>}
+
+        <div className="search-row">
+          <div className="search-bar">
+            <span className="material-symbols-outlined">search</span>
+            <input
+              type="text"
+              placeholder={totalCount != null ? `Search all ${totalCount} games…` : 'Search games…'}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button
+                className="search-clear-btn"
+                onClick={() => setSearch('')}
+                aria-label="Clear search"
+                type="button"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            )}
+            {search && SpeechRecognition && <span className="search-divider" />}
+            {SpeechRecognition && (
+              <button
+                className={`mic-btn ${listening ? 'listening' : ''}`}
+                onClick={toggleVoiceSearch}
+                aria-label={listening ? 'Stop voice search' : 'Search by voice'}
+                type="button"
+              >
+                <span className="material-symbols-outlined">mic</span>
+              </button>
+            )}
+          </div>
+
+          <FilterPopover
+            types={types}
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            playersFilter={playersFilter}
+            setPlayersFilter={setPlayersFilter}
+            timeFilter={timeFilter}
+            setTimeFilter={setTimeFilter}
+            fields={['type', 'players', 'time']}
+            iconOnly
+          />
+        </div>
       </div>
 
       {activeFilterChips.length > 0 && (
@@ -220,8 +234,8 @@ export default function AllGames() {
                         {g.type_name}
                       </span>
                       <div className="game-list-item-actions">
-                        <button className="icon-btn" onClick={() => navigate(`/games/${g.id}/edit`)} aria-label="Edit">
-                          <span className="material-symbols-outlined">edit</span>
+                        <button className="icon-btn" onClick={() => navigate(`/games/${g.id}`)} aria-label="View">
+                          <span className="material-symbols-outlined">chevron_right</span>
                         </button>
                       </div>
                     </div>
