@@ -84,6 +84,21 @@ button {
   font-family: inherit;
 }
 
+/* Reaches screen readers without taking any space. For labels the visual design
+   carries some other way — a heading naming a region that the control which
+   opened it already named. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
   font-size: 20px;
@@ -100,26 +115,242 @@ button {
   flex: 1;
   display: flex;
   flex-direction: column;
+  /* How far a page travels to clear the screen. On a real phone that's the
+     viewport; inside the desktop device frame it's the frame, which is shorter —
+     a viewport-length throw there would spend most of the animation out of
+     sight and read as a delay rather than a slide. The frame override lives
+     with the rest of the frame rules at the bottom of this file. */
+  --swipe-travel: 100dvh;
+  /* The horizontal equivalent, for the menu strip. Same reasoning: the viewport
+     on a phone, the frame's width on desktop (overridden with the rest of the
+     frame rules at the bottom of this file). */
+  --swipe-travel-x: 100vw;
+}
+
+/* ------------------------------------------------------------------ *
+ * Page swipe transitions
+ *
+ * Home sits at the top of a vertical strip and Surprise Me sits below it.
+ * Opening it pans the strip: Home slides off the top as the destination rises
+ * from the bottom. Closing pans back — the page drops off the bottom and Home
+ * returns from the top.
+ *
+ * The menu and the six game type pages sit on a horizontal strip to Home's
+ * left. Opening one pans right: Home slides off to the right as the page comes
+ * in from the left. Closing pans back — the page leaves to the left and Home
+ * returns from the right.
+ *
+ * Driven from lib/pageSwipe.js; the durations there need to match the ones here.
+ *
+ * The animation runs on .page's children rather than on the box itself. A
+ * transform on .page would make it the containing block for its `position:
+ * fixed` descendants (the Add Game FAB, the A-Z index rail), which would snap
+ * them out of the device frame's coordinate space mid-slide. Moving each child
+ * instead offsets the fixed chrome from where it already sits, so the whole
+ * page travels as one.
+ * ------------------------------------------------------------------ */
+.page.swipe-leaving-up > * {
+  animation: page-swipe-leave-up 150ms cubic-bezier(0.7, 0, 0.84, 0) both;
+}
+
+@keyframes page-swipe-leave-up {
+  from {
+    translate: 0;
+  }
+  to {
+    translate: 0 calc(var(--swipe-travel) * -1);
+  }
+}
+
+.page.swipe-leaving-down > * {
+  animation: page-swipe-leave-down 150ms cubic-bezier(0.7, 0, 0.84, 0) both;
+}
+
+@keyframes page-swipe-leave-down {
+  from {
+    translate: 0;
+  }
+  to {
+    translate: 0 var(--swipe-travel);
+  }
+}
+
+.page.swipe-entering-from-below > * {
+  animation: page-swipe-enter-from-below 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes page-swipe-enter-from-below {
+  from {
+    translate: 0 var(--swipe-travel);
+  }
+  to {
+    translate: 0;
+  }
+}
+
+.page.swipe-entering-from-above > * {
+  animation: page-swipe-enter-from-above 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes page-swipe-enter-from-above {
+  from {
+    translate: 0 calc(var(--swipe-travel) * -1);
+  }
+  to {
+    translate: 0;
+  }
+}
+
+.page.swipe-leaving-left > * {
+  animation: page-swipe-leave-left 150ms cubic-bezier(0.7, 0, 0.84, 0) both;
+}
+
+@keyframes page-swipe-leave-left {
+  from {
+    translate: 0;
+  }
+  to {
+    translate: calc(var(--swipe-travel-x) * -1) 0;
+  }
+}
+
+.page.swipe-leaving-right > * {
+  animation: page-swipe-leave-right 150ms cubic-bezier(0.7, 0, 0.84, 0) both;
+}
+
+@keyframes page-swipe-leave-right {
+  from {
+    translate: 0;
+  }
+  to {
+    translate: var(--swipe-travel-x) 0;
+  }
+}
+
+.page.swipe-entering-from-left > * {
+  animation: page-swipe-enter-from-left 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes page-swipe-enter-from-left {
+  from {
+    translate: calc(var(--swipe-travel-x) * -1) 0;
+  }
+  to {
+    translate: 0;
+  }
+}
+
+.page.swipe-entering-from-right > * {
+  animation: page-swipe-enter-from-right 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes page-swipe-enter-from-right {
+  from {
+    translate: var(--swipe-travel-x) 0;
+  }
+  to {
+    translate: 0;
+  }
+}
+
+/* A page on its way down grows the scroll container past its bottom edge, which
+   would flash a scrollbar and let a stray touch scroll after it. Clip for as
+   long as something is travelling — the same goes for the horizontal strip,
+   where a page parked off to the right would widen the page instead. */
+body:has(.page.swipe-leaving-down),
+body:has(.page.swipe-entering-from-below),
+body:has(.page.swipe-leaving-left),
+body:has(.page.swipe-leaving-right),
+body:has(.page.swipe-entering-from-left),
+body:has(.page.swipe-entering-from-right),
+.device-frame__scroll:has(> .page.swipe-leaving-down),
+.device-frame__scroll:has(> .page.swipe-entering-from-below),
+.device-frame__scroll:has(> .page.swipe-leaving-left),
+.device-frame__scroll:has(> .page.swipe-leaving-right),
+.device-frame__scroll:has(> .page.swipe-entering-from-left),
+.device-frame__scroll:has(> .page.swipe-entering-from-right) {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* pageSwipe.js checks this same query and navigates straight away rather than
+     waiting on an animationend that would never come. */
+  .page.swipe-leaving-up > *,
+  .page.swipe-leaving-down > *,
+  .page.swipe-leaving-left > *,
+  .page.swipe-leaving-right > *,
+  .page.swipe-entering-from-below > *,
+  .page.swipe-entering-from-above > *,
+  .page.swipe-entering-from-left > *,
+  .page.swipe-entering-from-right > * {
+    animation: none;
+  }
 }
 
 .page-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
 }
 
 /* Game Details / Game Category pages use a tighter header-to-content gap */
 .page-header.page-header-tight {
-  margin-bottom: 12px;
+  margin-bottom: 20px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Scroll-back header
+ *
+ * List pages gather their chrome — title, back button, overflow menu, search
+ * bar and filter — into one sticky block. Scrolling down lets it travel off the
+ * top with the content; scrolling back up returns it, wherever the reader is in
+ * the list. lib/useScrollBackHeader.js drives it, writing the current pull-up
+ * distance into --scroll-back-shift.
+ * ------------------------------------------------------------------ */
+.scroll-back-header {
+  position: sticky;
+  top: 0;
+  /* Over the list and over the fixed FAB and A-Z rail (15), under the rail's
+     magnified bubble (25) and the confirm modal (50). */
+  z-index: 20;
+  /* Break out of .page's 16px gutters so the fill reaches the screen edges, and
+     swallow its top padding so no content shows through the strip above the
+     block once it is pinned. The padding puts both back inside; the bottom 16px
+     is the band of fill the content disappears under. */
+  margin: -16px -16px 0;
+  padding: 16px 16px 24px;
+  background: var(--neutral-bg);
+  transform: translateY(calc(var(--scroll-back-shift, 0px) * -1));
+}
+
+/* Only the return trip is animated — hiding tracks the scroll 1:1 and must not
+   lag behind it. The hook adds this class for the moves it wants eased.
+   A long, even glide rather than the page swipe's expo curve: that one spends
+   nine tenths of its travel in the first third of the time, which at this
+   distance reads as a snap followed by a crawl. This one leans in gently and
+   coasts out. */
+.scroll-back-header.is-sliding {
+  transition: transform 540ms cubic-bezier(0.33, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-back-header.is-sliding {
+    transition: none;
+  }
+}
+
+/* The block's own bottom padding is the gap under the search bar now. */
+.scroll-back-header .search-row {
+  margin-bottom: 0;
 }
 
 .back-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -160,6 +391,12 @@ button {
 .page-header-centered .page-title {
   width: 100%;
   text-align: center;
+}
+
+/* The back button and any action button are absolutely positioned, so the title
+   spans the full width and would run underneath them. Keep it clear of both. */
+.page-header-centered:has(.details-header-actions) .page-title {
+  padding-inline: 44px;
 }
 
 .page-header-centered .details-header-actions {
@@ -276,12 +513,12 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--text-secondary);
+  color: var(--text);
   cursor: pointer;
 }
 
@@ -304,10 +541,6 @@ button {
   background: #3a1f1f;
   color: #ff9b9b;
   border-color: #5c2e2e;
-}
-
-.icon-btn-cycle {
-  color: #fff;
 }
 
 /* Cards */
@@ -414,26 +647,94 @@ button {
   flex: 1;
   display: flex;
   flex-direction: column;
+  /* Anchored top, not centered: the logo/subtitle sit right under the topbar
+     icons and the two actions are pinned to the bottom edge instead (see
+     .home-actions), so the empty space in between is deliberate rather than
+     something to center around. Also the containing block for .home-topbar
+     below, which is pinned to the corner regardless. */
+  position: relative;
   justify-content: flex-start;
   align-items: center;
   text-align: center;
   gap: 12px;
-  padding: 0;
+  padding: 64px 0 0;
+}
+
+/* Pinned to the page's top-right corner regardless of how the rest of .home's
+   content is centered — absolute rather than a flex child, since centering the
+   logo/subtitle/buttons as a group must not also pull this out of the corner. */
+.home-topbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.home-topbar-left {
+  right: auto;
+  left: 0;
 }
 
 .home-logo {
   width: 280px;
   height: auto;
-  margin: 32px 0 16px;
+  margin: 0 0 8px;
 }
 
 .home-subtitle {
-  color: var(--text-secondary);
-  font-size: 16px;
-  margin: 0 0 40px;
+  color: #ffffff;
+  font-size: 18px;
+  margin: 0;
   max-width: 380px;
 }
 
+/* Home's two actions: play blind, or open the sheet and choose. Pinned 16px
+   above the bottom edge, FAB-style, so they stay reachable regardless of how
+   much empty space sits above them. `fixed` resolves against the device
+   frame on desktop the same way .fab's does, via the frame's transform. */
+.home-actions {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: calc(100% - 32px);
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 15;
+}
+
+/* Both are full-width pills; the fill is what separates them — Play A Game
+   is the brightest thing on the page, Browse More Game Types is an outline. */
+.home-play-btn,
+.home-viewall-btn {
+  width: 100%;
+  flex: none;
+  font-size: 16px;
+}
+
+/* Pure white rather than the theme's off-white --text, so the pill reads as
+   the brightest thing on the page. */
+.home-play-btn {
+  height: 60px;
+  background: #ffffff;
+  color: var(--neutral-bg);
+}
+
+.home-viewall-btn {
+  height: 60px;
+  background: transparent;
+  color: #ffffff;
+  border: 1.5px solid #ffffff;
+}
+
+.home-viewall-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Also used by the Game Types sheet's own grid (.sheet-grid in GameTypes.jsx),
+   which is the only place these tiles render now that Home no longer shows a
+   preview set of them. */
 .home-type-grid {
   width: 100%;
   max-width: 420px;
@@ -471,35 +772,143 @@ button {
   }
 }
 
-.home-bottom-row {
-  width: 100%;
-  max-width: 420px;
+/* ------------------------------------------------------------------ *
+ * Game Types sheet
+ *
+ * The far end of the vertical strip below Home, dressed as a sheet: a black
+ * grab strip across the top with a handle, and under it a rounded panel that
+ * holds every game type. It rides the same page-swipe animation as Surprise Me
+ * — Home slides off the top, this rises from the bottom.
+ *
+ * The page is pinned to exactly one screen and the *panel* scrolls, so the grab
+ * strip stays reachable however far down the list the reader is and the tiles
+ * disappear under the panel's rounded top edge rather than past the screen's.
+ * ------------------------------------------------------------------ */
+.page-sheet {
+  padding: 0;
+  /* Both the containing block for the Home copy above, and the clip that keeps
+     it hidden until a pull brings its bottom edge down into view. */
+  position: relative;
+  /* A screen tall and no taller: the panel inside is what scrolls, so the page
+     itself must never grow and hand the scrolling to the frame instead.
+     `flex: none` is what makes that height stick — .page's inherited `flex: 1`
+     is `flex: 1 1 0%`, whose zero basis replaces the height outright, and below
+     the frame breakpoint (where the scroller really is a flex container) that
+     left the page free to stretch to the full length of the grid. */
+  flex: none;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* The inert copy of Home that the sheet is covering, parked exactly one screen
+   above so its bottom edge meets the sheet's top edge. GameTypes.jsx moves the
+   two together, so a pull reveals the page being returned to instead of a bare
+   backdrop. `left`/`right` with auto margins keeps .page's centred max-width. */
+.sheet-behind {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+
+.sheet {
+  flex: 1;
+  min-height: 0;
   display: flex;
-}
-
-.home-bottom-row-stacked {
   flex-direction: column;
-  gap: 12px;
+  /* Shows through the panel's rounded top corners, and fills the strip above
+     it. Lives here rather than on .page so it travels with the swipe — the
+     animation moves .page's children, not .page itself. */
+  background: #000000;
+  /* The containing block for the close button, which floats over the panel
+     rather than scrolling with it. */
+  position: relative;
 }
 
-.home-bottom-row .btn {
-  width: 100%;
-  height: 48px;
-  font-size: 16px;
+/* The pull-to-close target: tap it or drag it down. It reads as the underside
+   of the page above, lifted to make room for the sheet — hence the rounded
+   bottom corners and the black gap between it and the panel.
+   `touch-action: none` rather than `pan-y`: the whole point of a drag here is
+   to move the sheet, so the browser must not claim it for a scroll first. */
+.sheet-grab {
+  flex: none;
+  height: 40px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  background: var(--neutral-bg);
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+  touch-action: none;
+  cursor: grab;
 }
 
-.home-bottom-row .btn-neutral {
-  height: 54px;
+.sheet-grab:active {
+  cursor: grabbing;
 }
 
-/* View All Games: no fill, white stroke */
-.home-bottom-row .btn-secondary {
-  color: var(--text);
-  border-color: var(--text);
+.sheet-grab-handle {
+  width: 40px;
+  height: 4px;
+  margin-top: 28px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.45);
 }
 
-.home-bottom-row .btn-secondary:hover:not(:disabled) {
-  background: rgba(242, 240, 237, 0.08);
+.sheet-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* A scroll that runs out here should stop, not carry on into the page behind
+     it — and on iOS an overscroll at the top would otherwise read as the
+     browser's own back gesture. */
+  overscroll-behavior: contain;
+  background: var(--neutral-bg);
+  border-radius: 24px 24px 0 0;
+  padding: 16px;
+  /* Clear the close button, so the last row of tiles can be scrolled out from
+     under it instead of resting permanently beneath it. */
+  padding-bottom: 100px;
+  /* A phone has no chrome scrollbar; hide it to keep the illusion. */
+  scrollbar-width: none;
+}
+
+.sheet-panel::-webkit-scrollbar {
+  display: none;
+}
+
+/* .home-type-grid is centred by .home's align-items; the panel is a plain
+   block, so the grid has to centre itself once it hits its max width. */
+.sheet-grid {
+  margin-inline: auto;
+}
+
+.sheet-close {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--neutral-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.05s ease;
+}
+
+.sheet-close:active {
+  transform: translateX(-50%) scale(0.95);
+}
+
+.sheet-close .material-symbols-outlined {
+  font-size: 26px;
 }
 
 /* Filter popover */
@@ -656,7 +1065,30 @@ button {
   flex-direction: column;
   align-items: center;
   gap: 24px;
-  padding: 0 0 32px;
+  /* Take the rest of the page's height so the card can be stretched to it.
+     Never shrink below the content: a card longer than the screen keeps its
+     full height and the page scrolls, rather than being squeezed and clipped. */
+  flex: 1 0 auto;
+  /* Break out of .page's 16px gutters and re-inset the content with matching
+     padding. The overflow clip edge is the padding box, so the card keeps its
+     inset width at rest but is free to paint across the gutter as it tilts and
+     travels — otherwise it was cut off by a vertical seam 16px in from the
+     frame edge instead of disappearing at the edge itself. */
+  margin-inline: -16px;
+  /* Bottom: swallow .page's 16px gutter so the clip edge lands exactly on the
+     frame's bottom edge and each card's overshoot runs off it. Top: reclaim the
+     12px under the header — a card at full tilt lifts a top corner ~40px above
+     the stack, and this plus the stack's own 36px offset keeps the clip edge
+     clear of it. Stopping at the header rather than reaching over it also
+     leaves the back and shuffle buttons hittable. */
+  margin-block: -12px -16px;
+  padding: 12px 16px 0;
+  /* Contains the swiping card's off-screen travel, and the overshoot every card
+     carries below the frame edge — unclipped, that surplus would turn into
+     70-odd pixels of dead scroll on every draw. `clip` rather than `hidden`:
+     hidden would make this a scroll container, which both allows a stray
+     horizontal scrollbar and would trap any fixed/sticky descendant. */
+  overflow: clip;
 }
 
 .game-card {
@@ -746,6 +1178,167 @@ button {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Random draw stack
+ *
+ * The drawn games are a stack, not a filmstrip: the prefetched card sits behind
+ * the current one, slightly smaller and peeking above it, and dragging the top
+ * card away to the left lets it rise into place. Dragging right pulls the last
+ * dismissed card back down over the top — cards leave to the left, so undoing
+ * returns them from the left.
+ *
+ * Only the opening card animates in from the side; after that every change is a
+ * dismissal off the top of the stack. RandomGame drives all of it imperatively
+ * while a finger is down, since per-pointermove React renders would cost frames.
+ * ------------------------------------------------------------------ */
+.details-card.draw-card {
+  /* Opt out of the shared rise-up entry, which .details-card still gives the
+     game details page. Without this, dropping the entry class would switch the
+     computed animation-name back to details-card-in and re-trigger it. */
+  animation: none;
+  /* The overshoot past the clip edge, held as padding rather than taken out of
+     the card's height: the clip then only ever eats blank card, never the last
+     line of a long game's rules. */
+  padding-bottom: calc(16px + var(--card-bleed));
+  /* Those corners live below the clip edge and are never in view. Rounding them
+     only risks a sliver of curve surfacing on a card that happens to be exactly
+     as tall as the space it has. */
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.draw-stack {
+  position: relative;
+  width: 100%;
+  /* Every layer behind the top card peeks this far above the one in front of
+     it. RandomGame.jsx interpolates the same step, so keep the two in sync. */
+  --stack-peek: 12px;
+  /* Two layers peek above the top card at rest and a third joins them for the
+     length of a forward drag; the header only leaves 12px below the back
+     button. Reserve all three peeks here so that 12px stays a gap instead of
+     the deepest layer riding up under the button mid-swipe. */
+  margin-top: calc(var(--stack-peek) * 3);
+  /* How far every card runs past the stack's bottom edge — which .draw-stage
+     has parked on the frame's bottom edge and clips at. Enough to cover the
+     ~40px a bottom corner swings up through at full tilt, so mid-swipe there is
+     never a wedge of page showing under the card. */
+  --card-bleed: 72px;
+  /* Vertical panning stays with the browser so the page still scrolls under a
+     finger; only horizontal movement reaches the pointer handlers. */
+  touch-action: pan-y;
+  /* Fill whatever the stage has left so the top card can be stretched to it.
+     `0` shrink: a card longer than the screen keeps its full height and the
+     page scrolls, rather than being squeezed into the space available. */
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+}
+
+.draw-stack--grabbable {
+  cursor: grab;
+}
+
+.draw-stack--dragging {
+  cursor: grabbing;
+  /* A drag across body copy would otherwise start selecting it. */
+  user-select: none;
+}
+
+/* Absolute so neither layer can change the stage's height — cards differ in
+   length from game to game, and the stack's depth should not jump with it. */
+.draw-stack__layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  /* Same overshoot the top card gets, so a layer rising into its place mid-drag
+     reaches just as far past the bottom edge. */
+  min-height: calc(100% + var(--card-bleed));
+}
+
+.draw-stack__top {
+  position: relative;
+  z-index: 3;
+  /* Every card is at least as tall as the space under the header, whatever its
+     game's text amounts to: they end off the bottom edge instead of stopping
+     short of it, so a two-line game and a ten-line one read the same length.
+     The negative margin is the bleed — it grows the card past the stack without
+     growing the stack itself, which is what the layers behind size against. */
+  flex: 1 0 auto;
+  margin-bottom: calc(var(--card-bleed) * -1);
+}
+
+/* Keep these poses in sync with BEHIND_* / BEHIND_2_* in RandomGame.jsx, which
+   interpolates each layer forward one place as the top card is dragged off. The
+   origin is the top edge so every peek is a constant strip regardless of how
+   tall any given card happens to be. */
+.draw-stack__behind {
+  z-index: 2;
+  transform-origin: top center;
+  transform: translateY(calc(var(--stack-peek) * -1)) scale(0.95);
+  /* Cards run to whatever length their game needs, so a longer one underneath
+     would hang below the top card and spill readable text into the page. Clamp
+     it to the stack (whose height the top card sets) and clip the remainder:
+     only the strip peeking above should ever be visible.
+     Divided by its own scale, so once shrunk its bottom edge lands exactly
+     where the top card's does — flush with the bleed, not 5% short of it. */
+  height: calc((100% + var(--card-bleed)) / 0.95);
+  overflow: hidden;
+}
+
+/* The deepest layer is narrower than the one in front of it, so nothing of it
+   but that top strip is ever on screen. It carries no game for that reason —
+   a blank shell reads identically and saves holding a second prefetched draw
+   just to fill pixels no one can read. */
+.draw-stack__behind-2 {
+  z-index: 1;
+  transform-origin: top center;
+  transform: translateY(calc(var(--stack-peek) * -2)) scale(0.9);
+  height: calc((100% + var(--card-bleed)) / 0.9);
+}
+
+/* The reserve layer. Hidden at rest — the stack is three deep and this would be
+   a fourth — and faded in for the length of a forward drag, which lifts every
+   layer one place and would otherwise leave the deepest slot empty. Its pose
+   here is one step further back again; RandomGame.jsx walks it up to
+   .draw-stack__behind-2's as the swipe commits. */
+.draw-stack__behind-3 {
+  z-index: 0;
+  transform-origin: top center;
+  transform: translateY(calc(var(--stack-peek) * -3)) scale(0.85);
+  height: calc((100% + var(--card-bleed)) / 0.85);
+  opacity: 0;
+  /* Quick enough to be there by the time the card has moved any real distance.
+     Once a settle is running its inline transition takes over the timing. */
+  transition: opacity 360ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .draw-stack__behind-3 {
+    transition: none;
+  }
+}
+
+/* A card-shaped blank, for layers that exist only as a peeking edge. Matches
+   .details-card's surface without inheriting its entry animation. */
+.draw-stack__shell {
+  background: #ffffff;
+  border: 1px solid #e5e3e0;
+  border-radius: var(--radius-card);
+}
+
+/* Parked off to the left — where dismissed cards went — until a back-drag pulls
+   it across the top of the stack. The offset past -100% is EXIT_MARGIN from
+   RandomGame.jsx, so it rests exactly where it was thrown to; keep the two in
+   sync. A flat -100% would leave its trailing edge level with the card's left
+   edge, which .draw-stage paints 16px past, so a strip of it showed in the
+   gutter for the whole of any drag — including one going the other way. */
+.draw-stack__incoming {
+  z-index: 4;
+  transform: translateX(calc(-100% - 80px));
+}
+
 .details-type-tag {
   margin-bottom: 16px;
 }
@@ -831,7 +1424,7 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
 }
 
 .search-row .search-bar {
@@ -947,15 +1540,16 @@ button {
   }
 }
 
-/* Icon-only filter button, shown alongside the search bar */
+/* Icon-only filter button, shown alongside the search bar. Same fill as
+   .icon-btn (the back button) so the header's icon buttons read as one set. */
 .filter-toggle-btn-icon {
   position: relative;
   width: 48px;
   height: 48px;
   padding: 0;
   border-radius: var(--radius-pill);
-  border: 1.5px solid var(--border);
-  background: transparent;
+  border: 1px solid var(--border);
+  background: var(--surface);
   color: var(--text);
 }
 
@@ -984,19 +1578,22 @@ button {
   height: 56px;
   border-radius: 50%;
   border: none;
-  background: var(--text);
-  color: var(--neutral-bg);
+  background: #B1BFFF;
+  color: #1a1816;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   z-index: 15;
-  transition: transform 0.05s ease, opacity 0.15s ease;
+  transition: transform 0.05s ease, background-color 0.15s ease;
 }
 
+/* A solid shade rather than a lower opacity: the FAB floats over both cards
+   and the dark page background, so a translucent hover would read as a
+   different color depending on what's underneath it. */
 .fab:hover {
-  opacity: 0.9;
+  background: #A3B0E9;
 }
 
 .fab:active {
@@ -1237,6 +1834,207 @@ button {
   border-color: #f0c9c9;
 }
 
+/* ------------------------------------------------------------------ *
+ * Card carousel
+ *
+ * The other half of the list pages: one game per card, swiped through left and
+ * right, with the cards either side hanging off the screen edges. The track is a
+ * native scroll-snap container, so the finger gets the browser's own momentum
+ * and every card is a real node that is already rendered by the time it is
+ * needed. components/GameCardCarousel.jsx handles the looping and reads the
+ * geometry below back off the DOM, so these numbers only live here.
+ * ------------------------------------------------------------------ */
+.card-carousel {
+  /* How much of each neighbouring card shows past the centred one, and the gap
+     between cards. The slide width falls out of the pair: a slide is 100% of the
+     track's *content* box, which the gutter below has already narrowed by one
+     peek plus one gap on each side. */
+  --carousel-peek: 16px;
+  --carousel-gap: 10px;
+  display: flex;
+  flex-direction: column;
+  /* Take whatever the header block leaves, so a card reaches the bottom of the
+     screen rather than floating in the middle of it. */
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Break out of .page's 16px gutters — the peeking cards should run off the
+     screen edges, not stop 16px short of them. */
+  margin: 12px -16px 0;
+}
+
+.card-carousel__track {
+  /* The offsetParent the slides' offsetLeft is measured from. */
+  position: relative;
+  display: flex;
+  gap: var(--carousel-gap);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-inline: calc(var(--carousel-peek) + var(--carousel-gap));
+  scroll-snap-type: x mandatory;
+  /* A swipe past either end lands on a clone at the very edge of the scroll
+     range; without this, iOS reads the overscroll as its own back gesture. */
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  cursor: grab;
+}
+
+.card-carousel__track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mouse drags write scrollLeft directly, which snapping would fight for the
+   length of the gesture. GameCardCarousel.jsx adds this while one is running and
+   takes it off once the release has glided onto a snap point. */
+.card-carousel__track.is-dragging {
+  scroll-snap-type: none;
+  cursor: grabbing;
+  user-select: none;
+}
+
+.card-carousel__slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  /* Cards are shorter than the space on a tall screen, so centre them in it —
+     and centre them all identically, which is what keeps the peeking edges
+     level with the card in the middle. */
+  align-items: center;
+  scroll-snap-align: center;
+}
+
+.carousel-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* Sized by its contents rather than the track, so the deck sits as a band of
+     short cards. Every card comes out the same height anyway: the description is
+     clamped and the stats block below it is a fixed three rows. */
+  max-height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e5e3e0;
+  border-radius: var(--radius-card);
+  padding: 18px;
+  cursor: pointer;
+}
+
+.carousel-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.carousel-card .icon-btn {
+  background: #ffffff;
+  border-color: #e5e3e0;
+  color: #1a1816;
+}
+
+.carousel-card .icon-btn:hover {
+  background: #f5f4f2;
+}
+
+.carousel-card__body {
+  flex: 0 1 auto;
+  min-height: 0;
+  margin-top: 16px;
+}
+
+.carousel-card__title {
+  font-family: var(--font-header);
+  font-weight: 500;
+  font-size: 40px;
+  line-height: 1.05;
+  margin: 0;
+  color: #1a1816;
+  /* A long title stays on one line and trails off rather than pushing the stats
+     block off the bottom of the card. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Three lines, then an ellipsis — the full text is one tap away on the details
+   page, so a long description never has to set the card's height. */
+.carousel-card__desc {
+  margin: 12px 0 0;
+  font-size: 16px;
+  line-height: 20px;
+  color: #33302b;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.carousel-card__stats {
+  flex: none;
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+/* Each value keeps to its own line, so a long materials list trims instead of
+   growing the card. */
+.carousel-card__stats .stat-row > div {
+  min-width: 0;
+}
+
+.carousel-card__stats .stat-row-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-carousel__counter {
+  flex: none;
+  text-align: center;
+  padding-top: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* Sits below the counter. .page already carries 16px of bottom padding, so
+   8px more here lands the row 24px clear of the viewport edge. */
+.card-carousel__actions {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
+
+.card-carousel__action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.card-carousel__action .material-symbols-outlined {
+  font-size: 42px;
+}
+
+.card-carousel__action-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
 /* Manage Types */
 .type-list {
   display: flex;
@@ -1342,6 +2140,21 @@ button {
  * edges, and pages taller than the frame scroll inside it rather than growing
  * the window.
  * ------------------------------------------------------------------ */
+
+/* On a real phone the frame and its scroller are inert wrappers, and being
+   inert they used to stop #root's full-height flex chain dead: .page's `flex: 1`
+   had nothing definite to grow into, so a page ended at its content and left
+   bare background below it. Pass the height through instead — the drawn card
+   relies on it to reach the bottom of the screen. */
+@media (max-width: 600px) {
+  .device-frame,
+  .device-frame__scroll {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+}
+
 @media (min-width: 601px) {
   #root {
     display: flex;
@@ -1400,6 +2213,17 @@ button {
      and .home's `flex: 1` has a definite box to grow into. */
   .device-frame .page {
     min-height: 100%;
+    /* Same reason, for the swipe transitions: a page only has to clear the
+       frame to be gone. Mirrors the height above it — keep the two together. */
+    --swipe-travel: min(812px, calc(100dvh - 32px));
+    /* Likewise for the menu's horizontal strip — the frame's own width. */
+    --swipe-travel-x: 375px;
+  }
+
+  /* The sheet is a screen tall, and inside the frame the "screen" is the frame
+     — not the window that 100dvh would measure. */
+  .device-frame .page-sheet {
+    height: 100%;
   }
 
   /* These rules centre fixed chrome against a 640px column on wide viewports via

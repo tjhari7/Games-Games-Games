@@ -37,6 +37,10 @@ function playersMatch(playersText, target) {
 function parseTimeRangeMinutes(timeText) {
   if (!timeText) return null;
   const text = timeText.toLowerCase();
+  // "Under 10 min" is a ceiling, not a single value — without this it would
+  // fall through to singleMatch and parse as exactly 10.
+  const underMatch = text.match(/^\s*(?:under|less than|up to)\s*(\d+)/);
+  if (underMatch) return [0, Number(underMatch[1])];
   const plusMatch = text.match(/(\d+)\s*(?:min|minutes)?\s*\+/);
   if (plusMatch) return [Number(plusMatch[1]), Infinity];
   const rangeMatch = text.match(/(\d+)\s*-\s*(\d+)/);
@@ -50,7 +54,9 @@ function timeMatchesBucket(timeText, bucket) {
   const range = parseTimeRangeMinutes(timeText);
   if (!range) return false;
   const [lo, hi] = range;
-  if (bucket === 'under10') return lo < 10;
+  // Ten minutes and under: the whole range has to fit inside ten minutes, so
+  // "10 min" and "Under 10 min" qualify but "10 min+" and "10-20 min" do not.
+  if (bucket === 'under10') return hi <= 10;
   if (bucket === '10to30') return lo <= 30 && hi >= 10;
   if (bucket === 'over30') return hi > 30 || hi === Infinity;
   return true;
