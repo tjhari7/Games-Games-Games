@@ -8,6 +8,14 @@
     "created_at": "2026-07-12T17:21:46.961Z"
   },
   {
+    "id": "1ad88074-3712-4f2e-bb61-c1bcab81a38d",
+    "name": "Vote",
+    "accent": "#D4E89B",
+    "bg": "#313A18",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "1cbfe33d-31c6-4956-858d-179fd14420c2",
     "name": "Unassigned",
     "accent": "#E8DA59",
@@ -22,6 +30,38 @@
     "bg": "#3A2C18",
     "protected": false,
     "created_at": "2026-07-12T17:21:47.208Z"
+  },
+  {
+    "id": "58149163-c6f8-4029-9d30-d7995da81758",
+    "name": "Write",
+    "accent": "#9BC9F0",
+    "bg": "#182A3A",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "5f4e49f6-624e-4edc-b1f3-5936d95bb204",
+    "name": "Team",
+    "accent": "#8FD4E8",
+    "bg": "#18323A",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "6071c92f-1084-40c0-b87b-9d8fbfbde62d",
+    "name": "Endure",
+    "accent": "#F2E3A2",
+    "bg": "#3A3418",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "883a169c-0725-4b2b-b370-b85521823e19",
+    "name": "Deduce",
+    "accent": "#C4B5E8",
+    "bg": "#22183A",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "8ae6892a-79ee-4ce8-ad97-ed8f861fb5d1",
@@ -48,11 +88,59 @@
     "created_at": "2026-07-12T17:21:47.509Z"
   },
   {
+    "id": "afc7dc47-702b-4094-b04b-e3698f7ae1e3",
+    "name": "Rank",
+    "accent": "#B5D9A8",
+    "bg": "#213A18",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "b0a9cb92-4f38-40cb-bf7b-6c31574d2886",
+    "name": "Sense",
+    "accent": "#E8B5D4",
+    "bg": "#3A182C",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "b0da0c3e-1c71-429e-942c-f5f4d88261d5",
+    "name": "Persona",
+    "accent": "#E0A9F0",
+    "bg": "#32183A",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "b184a3ac-9279-43a7-bb8b-77a186913413",
+    "name": "Guess",
+    "accent": "#A8E6D4",
+    "bg": "#183A30",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "d0d4de43-bc54-4e84-aff5-55bafe61bba0",
+    "name": "Word",
+    "accent": "#F5C99B",
+    "bg": "#3A2918",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "ef033889-2268-46cb-979b-b2d32df8bbfe",
     "name": "Drawing",
     "accent": "#BAAE2C",
     "bg": "#3A3718",
     "protected": false,
     "created_at": "2026-07-12T17:21:47.329Z"
+  },
+  {
+    "id": "f0f66ee5-5b67-45ce-ba07-1ccff40f9bcf",
+    "name": "Sound",
+    "accent": "#F2A9C4",
+    "bg": "#3A1824",
+    "protected": false,
+    "created_at": "2026-08-13T01:50:57.778Z"
   }
 ]
