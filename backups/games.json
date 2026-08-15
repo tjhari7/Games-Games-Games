@@ -12,6 +12,18 @@
     "created_at": "2026-07-12T17:21:48.333Z"
   },
   {
+    "id": "0b2f4b95-a70e-4d6c-a19b-544a9600a6c4",
+    "type_id": "5f4e49f6-624e-4edc-b1f3-5936d95bb204",
+    "title": "Human Knot",
+    "description": "Untangle the group without letting go.",
+    "players": "6-12",
+    "time": "10 min+",
+    "materials": "None",
+    "rules": "Stand in a close circle. Everyone puts one hand in and grabs someone else's hand — not a person beside you. Do the same with the other hand, to a different person. Now untangle into a single circle by stepping over and under arms. Nobody lets go at any point. Not every knot is solvable; ending in two linked circles is a legitimate result.",
+    "example": "Ten minutes of careful manoeuvring resolves into two separate rings and an argument about whether that counts.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "0cf07cf9-cdf3-44ed-b489-bd653f05aeaf",
     "type_id": "1df7aabe-06c1-42a5-b522-2f953602d96d",
     "title": "Mystery Monster",
@@ -25,7 +37,7 @@
   },
   {
     "id": "0d0e0b34-82cf-44b7-8720-5b4d403756cc",
-    "type_id": "1941c325-032f-4bff-adb3-4bd140554156",
+    "type_id": "d0d4de43-bc54-4e84-aff5-55bafe61bba0",
     "title": "Last Letter, First Letter",
     "description": "Chain words together where each one starts with the last letter of the one before it.",
     "players": "2+",
@@ -34,6 +46,18 @@
     "rules": "Each word must start with the last letter of the previous word. Players take turns quickly, keeping the chain going as fast as they can.",
     "example": "Apple → Elephant → Turtle → Egg → Goat...",
     "created_at": "2026-07-13T01:50:55.140Z"
+  },
+  {
+    "id": "12bc1591-03df-4d7a-bcfd-5cda2be93ff3",
+    "type_id": "5f4e49f6-624e-4edc-b1f3-5936d95bb204",
+    "title": "Volcano",
+    "description": "The group physically forms whatever the caller names, in five seconds.",
+    "players": "5+",
+    "time": "10 min+",
+    "materials": "None",
+    "rules": "Everyone moves around the space. The caller shouts an object and counts to five. Before they finish, the whole group must have formed that object together using their bodies. No planning, no assigning roles, no talking it through — just commit to a part and go.",
+    "example": "\"Washing machine! One, two, three, four, five!\" and four people are already spinning in the middle.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "1592125d-cf66-401c-9195-b18c7f67d9aa",
@@ -46,6 +70,18 @@
     "rules": "Players must reenact an entire movie's story in under one minute. At the end, one player has to guess which movie it was.",
     "example": null,
     "created_at": "2026-07-13T01:50:55.845Z"
+  },
+  {
+    "id": "16fcc2d2-f5be-4689-96d9-9ea237ef512a",
+    "type_id": "ef033889-2268-46cb-979b-b2d32df8bbfe",
+    "title": "One Line",
+    "description": "Draw the whole thing in a single unbroken stroke.",
+    "players": "2+",
+    "time": "10 min+",
+    "materials": "Paper and pen",
+    "rules": "Draw the prompt without lifting your pen from the paper. The moment the pen comes up, your turn is over and you submit whatever you have. Others guess. Retracing over lines you've already drawn is allowed and is usually the only way to finish.",
+    "example": "Prompt is \"bicycle.\" You get both wheels and the frame in one loop, but the handlebars cost you the pen lift.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "1d77a01a-3f3c-4f97-894b-4562aa2fe7f7",
@@ -72,6 +108,18 @@
     "created_at": "2026-07-12T17:21:48.230Z"
   },
   {
+    "id": "22b3c28a-7bcf-4b59-8ad8-6996923bdf1f",
+    "type_id": "883a169c-0725-4b2b-b370-b85521823e19",
+    "title": "Wink Murder",
+    "description": "One secret killer eliminates people with a wink across the room.",
+    "players": "6+",
+    "time": "10 min+",
+    "materials": "Paper and pen",
+    "rules": "Draw slips; one says killer. Everyone mingles normally. The killer eliminates people by catching their eye and winking — the victim waits a few seconds, then dramatically dies. Anyone who thinks they know the killer says \"I accuse.\" A second person must second the accusation within ten seconds, then both name a suspect. Wrong, and both accusers are out.",
+    "example": "Someone dies mid-sentence in the middle of a completely unrelated conversation about parking.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "22f23125-9536-4358-b4da-1ec1e136399e",
     "type_id": "1941c325-032f-4bff-adb3-4bd140554156",
     "title": "Fortunately / Unfortunately",
@@ -85,7 +133,7 @@
   },
   {
     "id": "24598d8d-1ba1-475d-9cfb-46d7ab818873",
-    "type_id": "a1d53eea-dc38-416a-934f-5ec2d1db5bd0",
+    "type_id": "b184a3ac-9279-43a7-bb8b-77a186913413",
     "title": "Movie Plot",
     "description": "Guess the movie from a vague plot description, one clue at a time.",
     "players": "3+",
@@ -94,6 +142,18 @@
     "rules": "One player writes a brief plot summary of a movie without giving away the title, then reads it aloud. After each round of incorrect guesses, they add another clue until someone guesses the movie.",
     "example": null,
     "created_at": "2026-07-13T01:50:53.897Z"
+  },
+  {
+    "id": "26cc4af8-95d7-4f1c-80aa-fb002a7124e6",
+    "type_id": "b0da0c3e-1c71-429e-942c-f5f4d88261d5",
+    "title": "Character Swap",
+    "description": "Everyone plays someone else in the room.",
+    "players": "4+",
+    "time": "20-30 min",
+    "materials": "Paper and pen",
+    "rules": "Write everyone's name on slips and redistribute so nobody has their own. Play the person on your slip — mannerisms, opinions, phrasing. Keep it affectionate rather than cutting. After fifteen minutes, everyone guesses who was playing whom.",
+    "example": "Two people are unknowingly playing each other and the conversation gets recursive.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "26e4563c-f28a-4537-8056-c23d17f5f1e9",
@@ -120,6 +180,18 @@
     "created_at": "2026-07-13T01:50:55.323Z"
   },
   {
+    "id": "2e086f9a-e2bd-496a-8142-6bb58a58f988",
+    "type_id": "f0f66ee5-5b67-45ce-ba07-1ccff40f9bcf",
+    "title": "Hum That Tune",
+    "description": "Hum a song until your team names it.",
+    "players": "4+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "Draw a song title and hum it for your team. No lyrics, no mouthing the words, no tapping the rhythm on anything, no conducting. Sixty seconds per song. One point per correct title. If the humming stops for more than three seconds the turn ends.",
+    "example": "A hummer gets four bars in before realising they only know the chorus of the song they drew.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "2f1fc288-ea91-461f-94e5-129495d6adee",
     "type_id": "ef033889-2268-46cb-979b-b2d32df8bbfe",
     "title": "Pictionary",
@@ -133,7 +205,7 @@
   },
   {
     "id": "3246c8cf-00a8-44fc-ae8a-7ea7bc8ab379",
-    "type_id": "a1d53eea-dc38-416a-934f-5ec2d1db5bd0",
+    "type_id": "b184a3ac-9279-43a7-bb8b-77a186913413",
     "title": "20 Questions",
     "description": "Guess the person, place, or thing someone is thinking of using only yes-or-no questions.",
     "players": "2",
@@ -142,6 +214,18 @@
     "rules": "One person thinks of a person, place, or thing. The other players ask yes/no questions to narrow it down in 20 turns or fewer. For an extra challenge, limit the game to a theme like movie characters or objects in the kitchen.",
     "example": null,
     "created_at": "2026-07-13T01:50:53.398Z"
+  },
+  {
+    "id": "325ff9a2-5ebd-4650-9b7a-e0f09b2b8de2",
+    "type_id": "58149163-c6f8-4029-9d30-d7995da81758",
+    "title": "Fake Definitions",
+    "description": "Invent a meaning for an obscure word and try to fool the room.",
+    "players": "4+",
+    "time": "20-30 min",
+    "materials": "Paper and pen",
+    "rules": "One person reads out a genuinely obscure word and secretly writes down the real definition. Everyone else writes a convincing fake. The reader shuffles all of them together and reads them out. Everyone votes on which is real. Score a point for each vote your fake receives, and two points for picking the real one.",
+    "example": "The word is \"gongoozler.\" Four confident fakes go down and two people accidentally vote for the real definition.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "33746398-c0e6-44fa-8366-7b1d745a75b0",
@@ -180,6 +264,30 @@
     "created_at": "2026-07-13T01:50:55.229Z"
   },
   {
+    "id": "3b39f93a-09b5-4ecd-b5c9-9e14dcf15e9a",
+    "type_id": "6071c92f-1084-40c0-b87b-9d8fbfbde62d",
+    "title": "Don't Laugh",
+    "description": "Keep a straight face while the room works on you.",
+    "players": "3+",
+    "time": "10 min+",
+    "materials": "None",
+    "rules": "One player must not laugh, smile, or break for sixty seconds. Everyone else does whatever they can to break them, short of touching them. Anyone who makes them laugh takes their place. If they survive the minute, they pick who goes next.",
+    "example": "Four people fail with elaborate material and the fifth wins instantly by staring blankly.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "3cef96cf-37e1-4de2-abb2-9b2c9ca03ed7",
+    "type_id": "1ad88074-3712-4f2e-bb61-c1bcab81a38d",
+    "title": "Match The Majority",
+    "description": "Answer with what the room would say, not what you think.",
+    "players": "4+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "Read a question with no correct answer. Everyone writes down the answer they think most people in the room will give — not their own honest answer. Reveal all at once. Score a point for every other person who matched you. Being predictable is the entire strategy.",
+    "example": "\"Name a colour.\" Four people write blue and score three points each; the person who wrote chartreuse scores nothing.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "44f52506-cae8-4725-b45c-0f6740d560ec",
     "type_id": "abc7b07a-2fb7-4c24-a056-2681865f1f32",
     "title": "Spoons",
@@ -216,6 +324,42 @@
     "created_at": "2026-07-12T17:21:49.101Z"
   },
   {
+    "id": "485cc442-e97f-43f2-bc52-a21532cb8df3",
+    "type_id": "883a169c-0725-4b2b-b370-b85521823e19",
+    "title": "Word Imposter",
+    "description": "Everyone gets the same secret word except one player.",
+    "players": "4+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "Write the secret word on slips for everyone except one player, who gets a closely related word instead. Nobody knows who the imposter is, including the imposter. Go around giving one-word clues about your word. After two rounds of clues, everyone votes. If the imposter is caught they get one chance to guess the real word and steal the win.",
+    "example": "Everyone has \"coffee,\" one player has \"tea.\" The clues get suspiciously vague around the person saying \"warm\" and \"morning.\"",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "4b95e38a-66a1-46d0-a60f-4321b3f75d49",
+    "type_id": "d0d4de43-bc54-4e84-aff5-55bafe61bba0",
+    "title": "Describe It",
+    "description": "Get your team to say the word without using the obvious ones.",
+    "players": "4+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "Write a word on a card along with five related words that are now banned. The describer must get their team to say the target word without using the target or any of the five banned words. No gestures, no sounds, no \"rhymes with.\" Sixty seconds per card, one point each.",
+    "example": "Target \"beach\" with banned words sand, sea, ocean, sun, swim. The describer opens with \"you go there on holiday and you get burnt.\"",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "4cd3c6fe-e53c-4845-b4ec-e5626a7ce222",
+    "type_id": "b0a9cb92-4f38-40cb-bf7b-6c31574d2886",
+    "title": "Mystery Box",
+    "description": "Identify objects by touch alone.",
+    "players": "2+",
+    "time": "10 min+",
+    "materials": "A box or bag, household objects",
+    "rules": "Fill a box or bag with objects while everyone else is out of the room. Players reach in without looking and get ten seconds per object and one guess. It works best with objects that are unexpected, or that mean something specific to the group.",
+    "example": "A pinecone, a shoelace, and a birthday card everyone recognises by the texture of the glitter.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "5496da97-562d-4dad-a566-1ff2cd3f2172",
     "type_id": "a1d53eea-dc38-416a-934f-5ec2d1db5bd0",
     "title": "Would You Rather",
@@ -228,8 +372,20 @@
     "created_at": "2026-07-12T17:21:49.008Z"
   },
   {
+    "id": "58088ee1-0407-4d2c-aa5e-711a07738607",
+    "type_id": "f0f66ee5-5b67-45ce-ba07-1ccff40f9bcf",
+    "title": "Guess The Noise",
+    "description": "Identify a household object purely by the sound it makes.",
+    "players": "2+",
+    "time": "10 min+",
+    "materials": "Household objects",
+    "rules": "One player gathers objects and stands behind the others, or the group closes their eyes. Make a single sound with one object. The group gets one guess each. Score a point for a correct identification, and the sound-maker scores if nobody gets it. No object may be used twice.",
+    "example": "A zip, a coin dropped on a plate, and a wine cork all get identified; the sound of a sock being folded does not.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "5bcd3335-a05a-426c-9137-4438979e9123",
-    "type_id": "a1d53eea-dc38-416a-934f-5ec2d1db5bd0",
+    "type_id": "883a169c-0725-4b2b-b370-b85521823e19",
     "title": "Psychiatrist",
     "description": "One player questions the group to diagnose the secret behavior pattern everyone else has agreed on.",
     "players": "3+",
@@ -238,6 +394,18 @@
     "rules": "One player leaves the room. The rest of the group agrees on a shared \"symptom\" — for example, everyone pretends to be the person to their right, or everyone answers as if they're a cat. The psychiatrist returns and asks questions, trying to diagnose the group's secret behavior pattern.",
     "example": null,
     "created_at": "2026-07-13T01:50:53.796Z"
+  },
+  {
+    "id": "5d8af493-e120-462c-92f6-55afcc3ff122",
+    "type_id": "1941c325-032f-4bff-adb3-4bd140554156",
+    "title": "Sit, Stand, Bend",
+    "description": "Three players, and one must always be sitting, one standing, one bent over.",
+    "players": "3",
+    "time": "10 min+",
+    "materials": "A chair",
+    "rules": "Get a location or relationship from the group, then start a scene. At every moment one player must be sitting, one standing, and one bending over. If two players end up in the same position, someone has to move — mid-line, mid-thought, whatever it takes. Keep the scene going through the scrambling.",
+    "example": "A job interview where the candidate keeps having to crouch because the interviewer just sat down.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "5e2e884b-1dad-4544-9050-1d41b3891473",
@@ -252,6 +420,54 @@
     "created_at": "2026-07-13T01:50:54.320Z"
   },
   {
+    "id": "5fdeacba-3003-4bee-a472-6873167cf305",
+    "type_id": "f0f66ee5-5b67-45ce-ba07-1ccff40f9bcf",
+    "title": "Foley",
+    "description": "One person narrates a scene while everyone else supplies the sound effects.",
+    "players": "3+",
+    "time": "10 min+",
+    "materials": "None",
+    "rules": "One player narrates a scene aloud, inventing it as they go. Everyone else is the sound department and must produce every single sound the scene calls for, using voices and whatever is within reach. The narrator should deliberately call for difficult sounds. Swap narrators every few minutes.",
+    "example": "\"He opened the door, and the entire flock of geese came through at once.\"",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "60c80317-96b4-47a5-a025-8af5f359c1ff",
+    "type_id": "a1d53eea-dc38-416a-934f-5ec2d1db5bd0",
+    "title": "Hot Seat",
+    "description": "Sixty seconds of rapid-fire questions from the whole group.",
+    "players": "3+",
+    "time": "10-20 min",
+    "materials": "A timer",
+    "rules": "One person sits in the hot seat for sixty seconds. Anyone may ask anything. Answers must be immediate and honest. Three passes allowed for the whole minute, no more. When the timer goes, the seat rotates. Nobody gets to ask a follow-up on a passed question.",
+    "example": "\"Worst job you've had?\" \"What did you think of me when we met?\" \"Pass.\" \"Biggest waste of money this year?\"",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "61cc9fe7-27ce-46d5-8457-ea6183c461a9",
+    "type_id": "58149163-c6f8-4029-9d30-d7995da81758",
+    "title": "Categories",
+    "description": "Five categories, one letter, one timer.",
+    "players": "2+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "Everyone writes the same five categories down their page. Pick a random letter. Two minutes to fill in an answer starting with that letter for every category. Read answers aloud one category at a time — you only score for answers nobody else wrote. Duplicates score zero for everyone who wrote them.",
+    "example": "Letter M, category \"things in a kitchen.\" Three people wrote microwave and scored nothing; one wrote mandoline and took the point.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "634f35e0-8b60-49db-a78b-e64175ea9a1b",
+    "type_id": "1ad88074-3712-4f2e-bb61-c1bcab81a38d",
+    "title": "Most Likely To",
+    "description": "The room votes on who fits the prompt.",
+    "players": "4+",
+    "time": "10-20 min",
+    "materials": "None",
+    "rules": "Read a prompt beginning \"most likely to.\" On a count of three, everyone points at one person. Most fingers wins the round and must explain why the room is wrong about them. Nobody may point at themselves.",
+    "example": "\"Most likely to leave a party without saying goodbye\" — five people point at the same person before the count reaches two.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "646fd50a-0b3c-468d-b8f9-f2ef11e626be",
     "type_id": "8ae6892a-79ee-4ce8-ad97-ed8f861fb5d1",
     "title": "Paper Airplane Distance",
@@ -262,6 +478,18 @@
     "rules": "Give each player one sheet of paper and a strict fold-and-throw time limit (e.g. 3 minutes to fold, one single throw each from the same starting line). Mark where each plane lands and measure the distance from the throw line. Longest distance wins. No re-throws, no redesigns after the first throw.",
     "example": "A carefully folded dart-style plane sails past everyone else’s efforts and lands nearly a full room-length away.",
     "created_at": "2026-07-12T17:21:49.405Z"
+  },
+  {
+    "id": "6532ffb3-e697-41a8-89c0-2a000d8bcdd1",
+    "type_id": "1941c325-032f-4bff-adb3-4bd140554156",
+    "title": "Yes, Let's",
+    "description": "A caller names an activity and everyone silently mimes it.",
+    "players": "4+",
+    "time": "10 min+",
+    "materials": "None",
+    "rules": "One person calls out \"Let's [activity].\" Everyone answers in unison with \"Yes, let's!\" and then silently explores that activity physically, spread around the room, not interacting. When the caller feels it's been explored, they call a new one. No dialogue, no sound effects — just committed physical exploration.",
+    "example": "\"Let's climb a mountain!\" — \"Yes, let's!\" — and the whole room is hauling itself up an invisible rock face.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "66c00c23-20de-48a0-bfa4-f5e9d06fe9af",
@@ -288,6 +516,18 @@
     "created_at": "2026-07-13T01:50:56.886Z"
   },
   {
+    "id": "71723a66-76e2-40c9-a095-a4f181ccd602",
+    "type_id": "b0da0c3e-1c71-429e-942c-f5f4d88261d5",
+    "title": "Endowment",
+    "description": "The room knows who you are; you don't.",
+    "players": "4+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "One player leaves. The group decides on an identity for them — a job, a relationship to the room, a reputation. The player returns and the group treats them accordingly without ever naming it. The player must work out who they are from the group's behaviour and say it aloud. No direct hints.",
+    "example": "The room treats someone as a returning astronaut for four minutes before they guess it.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "72919980-4748-41dd-bdd0-793220c16534",
     "type_id": "ef033889-2268-46cb-979b-b2d32df8bbfe",
     "title": "Telephone Pictionary",
@@ -310,6 +550,30 @@
     "rules": "Write down three words: a descriptive word, a location, and a thing. Pass your three words to the next player, who draws them, then a different player tries to guess the original three words from the drawing.",
     "example": null,
     "created_at": "2026-07-13T01:50:56.330Z"
+  },
+  {
+    "id": "7ca008d5-9736-49d9-a0cf-5978b515dcdb",
+    "type_id": "d0d4de43-bc54-4e84-aff5-55bafe61bba0",
+    "title": "Banned Words",
+    "description": "Hold a normal conversation while three common words are forbidden.",
+    "players": "3+",
+    "time": "10 min+",
+    "materials": "Paper and pen",
+    "rules": "The group agrees on three very common words — the, and, yes are a good starting set. Hold an ordinary conversation on any topic. Anyone who uses a banned word is out. Last person still talking wins. The conversation must stay genuine; deliberate one-word answers are ruled out by the group.",
+    "example": "Banned words are I, the, and no. Someone lasts four minutes before answering a direct question with \"no\" out of pure reflex.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "7e077370-3244-4565-89ad-cc545c79ea59",
+    "type_id": "58149163-c6f8-4029-9d30-d7995da81758",
+    "title": "Anonymous Answers",
+    "description": "Everyone answers the same prompt, then the room guesses who wrote what.",
+    "players": "4+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "Read a prompt. Everyone writes a response on identical slips and folds them. Shuffle and read them all aloud, then go through them one at a time and have the group guess the author. Score a point for every answer you correctly attribute, and a point for every guess that misses yours.",
+    "example": "Prompt is \"the pettiest thing you've done this month.\" Two answers are so specific they're identified instantly.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "80b6026d-343d-444f-a9f4-59f59e5b2ae4",
@@ -348,6 +612,30 @@
     "created_at": "2026-07-13T01:50:56.676Z"
   },
   {
+    "id": "8416ea38-5bf3-4464-b5c7-58325eeee6ff",
+    "type_id": "8ae6892a-79ee-4ce8-ad97-ed8f861fb5d1",
+    "title": "Best Use Of",
+    "description": "Everyone gets the same object and must find the most surprising thing it can do.",
+    "players": "3+",
+    "time": "10 min+",
+    "materials": "One household object per player",
+    "rules": "Everyone receives an identical object and two minutes to prepare. Each player then demonstrates one use for it — the more unexpected the better. The obvious use scores nothing. The group votes, and the demonstrator cannot vote for themselves.",
+    "example": "Everyone gets a clothes peg. Uses include a chip-bag clip (no points), a tiny puppet mouth, and a nose plug for an interpretive swimming routine.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "84299d59-4749-49bc-95a2-de58bf35d85b",
+    "type_id": "6071c92f-1084-40c0-b87b-9d8fbfbde62d",
+    "title": "Keep Talking",
+    "description": "Sixty seconds on a random topic with no pause, repetition, or hesitation.",
+    "players": "3+",
+    "time": "10 min+",
+    "materials": "A timer",
+    "rules": "Draw a topic and start talking. No pausing, no hesitating, no repeating a word you've already used other than common connecting words. Anyone may challenge at any point. A correct challenge takes over the topic and the remaining time; an incorrect one gives the speaker a bonus point.",
+    "example": "A speaker gets fourteen seconds into \"socks\" before saying \"socks\" a second time.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "8a71dbb7-d6f2-460c-8415-a901d23c0f48",
     "type_id": "1941c325-032f-4bff-adb3-4bd140554156",
     "title": "Freeze",
@@ -360,20 +648,8 @@
     "created_at": "2026-07-12T17:21:48.025Z"
   },
   {
-    "id": "90467ec0-0cec-421e-8622-c49b2ec8994c",
-    "type_id": "a1d53eea-dc38-416a-934f-5ec2d1db5bd0",
-    "title": "What Am I Thinking?",
-    "description": "Ask yes-or-no questions to guess the simple concept someone is thinking of.",
-    "players": "2+",
-    "time": "10 min+",
-    "materials": null,
-    "rules": "The leader thinks of a simple concept, like the moon. The other players take turns asking only yes-or-no questions until someone guesses it.",
-    "example": null,
-    "created_at": "2026-07-13T01:50:53.603Z"
-  },
-  {
     "id": "93fb8c64-28df-4823-a1cb-6dce13db9cad",
-    "type_id": "8ae6892a-79ee-4ce8-ad97-ed8f861fb5d1",
+    "type_id": "1ad88074-3712-4f2e-bb61-c1bcab81a38d",
     "title": "Match Categories Team Game",
     "description": "A Taskmaster-inspired category game score points by matching your teammate without matching the other team.",
     "players": "4",
@@ -384,8 +660,80 @@
     "created_at": "2026-07-13T01:50:57.195Z"
   },
   {
+    "id": "96754fc9-1cf4-44dc-8c79-08377cef2db7",
+    "type_id": "1ad88074-3712-4f2e-bb61-c1bcab81a38d",
+    "title": "Superlatives",
+    "description": "Invent an award, nominate people, argue about it.",
+    "players": "4+",
+    "time": "10-20 min",
+    "materials": "None",
+    "rules": "Each round, one person invents an award — the more specific the better. Anyone may nominate anyone, with a one-sentence case. Vote by show of hands. Ties are broken by whoever makes the better closing argument, judged by the person who invented the award.",
+    "example": "\"Most likely to be recognised by a barista they've never spoken to.\"",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "97b1cb14-03ed-47a0-8d57-97c0e315953f",
+    "type_id": "ef033889-2268-46cb-979b-b2d32df8bbfe",
+    "title": "Fifteen Seconds",
+    "description": "Five prompts, fifteen seconds each, no gaps.",
+    "players": "3+",
+    "time": "Under 10 min",
+    "materials": "Paper and pen",
+    "rules": "One person draws five prompts in a row with fifteen seconds each and no pause between them. Their team shouts guesses continuously. Score one point per correct guess. Rotate the drawer. Quality is irrelevant — the only thing that matters is how many land.",
+    "example": "Five prompts flash by; the team gets \"pizza\" and \"elephant\" instantly, misses the other three, and scores 2.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "9c3de9fc-c587-4b60-82f0-d996cf46d3e6",
+    "type_id": "58149163-c6f8-4029-9d30-d7995da81758",
+    "title": "Bad Haiku",
+    "description": "Seventeen syllables about something aggressively mundane.",
+    "players": "3+",
+    "time": "10 min+",
+    "materials": "Paper and pen",
+    "rules": "Pick a deliberately boring subject — a household appliance, a chore, a piece of admin. Everyone writes a haiku about it in three minutes: five syllables, seven, five. Read them all aloud. The group votes, and the worst one usually wins.",
+    "example": "Subject is \"the dishwasher.\" One entry spends all seventeen syllables on the top rack.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "9e1340ac-2bb3-4c8f-babf-264012dc8084",
+    "type_id": "8ae6892a-79ee-4ce8-ad97-ed8f861fb5d1",
+    "title": "Make Me Laugh",
+    "description": "Sixty seconds and one object to break a stone-faced judge.",
+    "players": "3+",
+    "time": "10 min+",
+    "materials": "Any one household object",
+    "rules": "One person is judge and must keep a completely straight face. Each challenger picks one object from the room and gets sixty seconds to make the judge laugh. No touching the judge. First challenger to break them wins the round and becomes the next judge.",
+    "example": "A challenger spends their full minute solemnly introducing a wooden spoon to every person in the room by name.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "a183901f-473c-42bf-9976-3d41262922ea",
+    "type_id": "afc7dc47-702b-4094-b04b-e3698f7ae1e3",
+    "title": "Rank The Room",
+    "description": "Order everyone present by a trait, then find out if you were right.",
+    "players": "4+",
+    "time": "10-20 min",
+    "materials": "None",
+    "rules": "Draw a trait that can be self-verified. Everyone except the subject silently orders the whole group along it, then compares lists and agrees on a group ranking. Each person then reveals their own true position. Score based on how close the group's ranking was.",
+    "example": "\"Most hours slept last night.\" The group puts someone near the bottom who actually slept ten.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "aa6ed478-8dea-464d-a9cd-e2a1461cd1bd",
+    "type_id": "b0da0c3e-1c71-429e-942c-f5f4d88261d5",
+    "title": "Secret Trait",
+    "description": "Maintain an assigned quirk all night and see who spots it.",
+    "players": "4+",
+    "time": "30 min+",
+    "materials": "Paper and pen",
+    "rules": "Everyone draws a slip with a personality quirk and keeps it up for the rest of the session — through other games, conversations, everything. Don't announce it and don't overplay it. At the end of the night, everyone writes down their guess for each person's trait. Score a point for each correct guess and a point for every person who failed to guess yours.",
+    "example": "Someone spends two hours agreeing with the last thing anyone said, and nobody notices until the reveal.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "aaa65cb5-418d-44d2-a559-a45b3ecc2993",
-    "type_id": "1941c325-032f-4bff-adb3-4bd140554156",
+    "type_id": "d0d4de43-bc54-4e84-aff5-55bafe61bba0",
     "title": "Mind Melt",
     "description": "Two players try to blurt out the exact same word at the same time. Beginner-friendly warm-up.",
     "players": "2",
@@ -397,7 +745,7 @@
   },
   {
     "id": "b40431aa-d91d-42cd-8ca3-f316170d9578",
-    "type_id": "8ae6892a-79ee-4ce8-ad97-ed8f861fb5d1",
+    "type_id": "f0f66ee5-5b67-45ce-ba07-1ccff40f9bcf",
     "title": "Snort, Raspberry, Whistle",
     "description": "Race against the clock to chain together as many snorts, raspberries, and whistles as you can.",
     "players": "2+",
@@ -408,8 +756,44 @@
     "created_at": "2026-07-13T01:50:57.084Z"
   },
   {
+    "id": "b7523886-4809-4468-a95d-9f6af506e8a2",
+    "type_id": "b0a9cb92-4f38-40cb-bf7b-6c31574d2886",
+    "title": "Smell Test",
+    "description": "Identify things by smell only.",
+    "players": "2+",
+    "time": "10 min+",
+    "materials": "Blindfold, opaque containers",
+    "rules": "Put strongly scented items in identical opaque containers. Blindfold the player and let them smell one at a time, one guess each. Surprisingly hard once anything with an obvious shape or sound is ruled out. Score a point per correct answer.",
+    "example": "Coffee and cinnamon go down easily; nobody gets uncooked rice.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "bd7356e4-9410-49e3-ad1b-c702ec2e2335",
+    "type_id": "afc7dc47-702b-4094-b04b-e3698f7ae1e3",
+    "title": "Tier List",
+    "description": "Sort a category into tiers and defend every placement.",
+    "players": "2+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "Pick a category and draw tiers from best to worst. Go around placing one item at a time. Anyone may challenge a placement and propose a move, and the group votes on it. No item may be moved twice in one round.",
+    "example": "Ranking breakfast cereals produces the longest and least productive argument of the night.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "be38aadb-5530-4b0d-a32e-f3d024bf8575",
+    "type_id": "883a169c-0725-4b2b-b370-b85521823e19",
+    "title": "Fake Artist",
+    "description": "Everyone draws one stroke of a shared picture, and one player has no idea what it is.",
+    "players": "5+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "Everyone gets the subject on a slip except one player, who gets a blank. Take turns adding a single continuous stroke to one shared drawing. Two full rounds, then everyone votes on who the fake is. If the fake is caught, they win anyway by correctly naming the subject.",
+    "example": "The subject is \"lighthouse.\" The fake adds a confident horizontal line near the bottom and hopes it reads as water.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "c6d81e2b-3881-492d-aff9-6153393c0a63",
-    "type_id": "a1d53eea-dc38-416a-934f-5ec2d1db5bd0",
+    "type_id": "d0d4de43-bc54-4e84-aff5-55bafe61bba0",
     "title": "Contact",
     "description": "Guess a secret word before anyone else by trading clues with the group.",
     "players": "3+",
@@ -432,6 +816,42 @@
     "created_at": "2026-07-13T01:50:55.421Z"
   },
   {
+    "id": "c8185fad-7bad-42e3-ae73-750349734815",
+    "type_id": "ef033889-2268-46cb-979b-b2d32df8bbfe",
+    "title": "Blind Contour",
+    "description": "Draw the prompt without once looking at your paper.",
+    "players": "2+",
+    "time": "10 min+",
+    "materials": "Paper and pen",
+    "rules": "Everyone gets the same prompt and 60 seconds. Keep your eyes on the prompt or the ceiling — never on your own paper, and never lift the pen to check. When time is up, lay all the drawings out at once. The group tries to identify each one. Score a point for every drawing of yours that gets correctly identified.",
+    "example": "Prompt is \"a horse.\" Six drawings go down, four are unrecognisable tangles, and the two that read as horses take the points.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "cb578e8d-3f8f-4a14-96ef-fb4279d70030",
+    "type_id": "6071c92f-1084-40c0-b87b-9d8fbfbde62d",
+    "title": "Hold The Pose",
+    "description": "Everyone takes an awkward stance and the last one standing wins.",
+    "players": "3+",
+    "time": "Under 10 min",
+    "materials": "None",
+    "rules": "The group agrees on a physically awkward but safe position. Everyone assumes it at the same time. Any adjustment, wobble, or collapse puts you out. Last person still holding it wins. Talking is allowed and is usually how people get taken out.",
+    "example": "Everyone holds a wall sit while the eliminated players describe increasingly comfortable chairs.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "d24afe4d-65ef-4b73-b553-ea7f6048802a",
+    "type_id": "883a169c-0725-4b2b-b370-b85521823e19",
+    "title": "The Thing",
+    "description": "A Mafia variant where the hidden team converts instead of kills.",
+    "players": "5+",
+    "time": "20-30 min",
+    "materials": "Deck of cards",
+    "rules": "One player starts infected. Each night the infected silently choose one player to convert rather than eliminate — nobody leaves the game. By day the group votes to eject one player, who is revealed. The humans win if they eject all infected; the infected win once they outnumber the humans. Works at lower player counts than Mafia because elimination is slower.",
+    "example": "A player who has been vocally leading the human side for three rounds gets converted on night four and keeps leading it.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
     "id": "d45eefd0-509d-4986-b6a4-defbd256d800",
     "type_id": "8ae6892a-79ee-4ce8-ad97-ed8f861fb5d1",
     "title": "Tallest Tower",
@@ -442,6 +862,18 @@
     "rules": "Give everyone 2 minutes and free rein over whatever is within reach on the table (no outside items). At \"go,\" everyone builds the tallest freestanding structure they can. When time is up, hands off — no touching to keep it standing. Measure each tower; if one collapses during measurement, it is scored at its last stable height. Tallest standing tower wins.",
     "example": "One player stacks books into a pyramid topped with a precariously balanced spoon for extra height, and it holds just long enough to be measured.",
     "created_at": "2026-07-12T17:21:49.317Z"
+  },
+  {
+    "id": "d953472a-a467-4d42-96de-3edbddfdf67f",
+    "type_id": "1ad88074-3712-4f2e-bb61-c1bcab81a38d",
+    "title": "Call The Room",
+    "description": "Predict how the vote lands before it happens.",
+    "players": "4+",
+    "time": "10 min+",
+    "materials": "Paper and pen",
+    "rules": "One player is the caller. Read a voting prompt. Before anyone votes, the caller secretly writes down their prediction of the result — who wins and by roughly how many. The room votes. The caller scores for reading it right, regardless of how they'd have voted themselves. Rotate the caller each round.",
+    "example": "The caller writes \"Sam, by a mile\" and Sam takes it 6-1.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "daa42851-5326-4b79-a1d8-6a5fb62db17b",
@@ -457,7 +889,7 @@
   },
   {
     "id": "ddf73d19-09ac-40f0-8c0b-72bb470f2ba2",
-    "type_id": "a1d53eea-dc38-416a-934f-5ec2d1db5bd0",
+    "type_id": "b184a3ac-9279-43a7-bb8b-77a186913413",
     "title": "Who Am I?",
     "description": "Guess the famous person, character, or thing written on a card stuck to your forehead using only yes-or-no questions.",
     "players": "2",
@@ -466,6 +898,18 @@
     "rules": "Write the name of a famous person, character, or thing on a card without letting the other player see it, then stick it to their forehead or hold it above their head. Take turns asking yes-or-no questions about the card you're wearing to figure out who or what you are.",
     "example": null,
     "created_at": "2026-07-13T01:50:53.199Z"
+  },
+  {
+    "id": "dfd79cd4-3d03-4730-829f-a011b8541ed5",
+    "type_id": "b0a9cb92-4f38-40cb-bf7b-6c31574d2886",
+    "title": "Blind Taste",
+    "description": "Identify food or drink by taste alone.",
+    "players": "2+",
+    "time": "10-20 min",
+    "materials": "Blindfold, food and drink",
+    "rules": "Split into two teams. Each team secretly picks items from the kitchen to challenge the other with. One player at a time is blindfolded and given a small taste. One guess each, and the taster may not smell it first. Score a point per correct identification. Nothing genuinely unpleasant, and check allergies before you start.",
+    "example": "Someone identifies balsamic vinegar instantly and then completely fails on plain honey.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "e18f4008-fb05-4636-8c50-6bf3617289b9",
@@ -490,6 +934,30 @@
     "rules": "Each player in turn says three statements about themselves: two true facts and one made-up lie, in any order. The rest of the group discusses and votes on which statement they believe is the lie. The player then reveals the truth. Rotate until everyone has gone.",
     "example": "\"I have run a marathon. I have met a celebrity. I am afraid of birds.\" The group debates, votes on the marathon claim, and finds out the celebrity meeting was the lie.",
     "created_at": "2026-07-12T17:21:48.919Z"
+  },
+  {
+    "id": "e1d66213-5c6d-412c-9210-cb092c906e60",
+    "type_id": "afc7dc47-702b-4094-b04b-e3698f7ae1e3",
+    "title": "Spectrum",
+    "description": "Place items between two extremes and argue about the order.",
+    "players": "3+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "Set two opposing extremes as the ends of a line. Draw a set of items and place them along it one at a time as a group. Anyone may contest a placement and must make a case for moving it. The argument is the game; the finished line is just the scoreboard.",
+    "example": "The spectrum runs \"breakfast\" to \"not breakfast\" and the group spends four minutes on cold pizza.",
+    "created_at": "2026-08-13T01:50:57.778Z"
+  },
+  {
+    "id": "ecc5fb96-d084-466d-861d-1789059529ca",
+    "type_id": "58149163-c6f8-4029-9d30-d7995da81758",
+    "title": "Written Consequences",
+    "description": "A folded story where you can only see the last few words.",
+    "players": "4+",
+    "time": "10-20 min",
+    "materials": "Paper and pen",
+    "rules": "Everyone writes the opening line of a story, then folds the paper so only the last few words show, and passes it on. The next person continues from those words alone. Keep folding and passing until the pages run out of room, then unfold and read every story aloud.",
+    "example": "A story opens in a hospital, becomes a heist, and ends with a sincere paragraph about a dog.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   },
   {
     "id": "ee1f16cc-cdd5-45cd-9192-79ad080dcb5a",
@@ -526,5 +994,17 @@
     "rules": "Improvise a short scene, then repeat it again in half the time, highlighting only the essential elements. Keep repeating and halving the time with each iteration, refining the story down to its core each round.",
     "example": null,
     "created_at": "2026-07-13T01:50:54.722Z"
+  },
+  {
+    "id": "fb367a30-0950-4c4a-b3f1-9bd122bd3383",
+    "type_id": "883a169c-0725-4b2b-b370-b85521823e19",
+    "title": "Mafia / Werewolf",
+    "description": "A hidden minority picks off the majority, one night at a time.",
+    "players": "7+",
+    "time": "20-30 min",
+    "materials": "Deck of cards",
+    "rules": "Deal one card per player — a set number of face cards make the mafia, everyone else is a villager. One person moderates and does not play. At night everyone closes their eyes, the mafia silently agree on a victim. By day the group debates and votes to eliminate someone. Repeat until the mafia are all out or they equal the villagers.",
+    "example": "Three nights in, the group votes out a loud accuser who turns out to be a villager, and the room goes very quiet.",
+    "created_at": "2026-08-13T01:50:57.778Z"
   }
 ]
