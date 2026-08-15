@@ -319,7 +319,7 @@ body:has(.page.swipe-entering-from-right),
      block once it is pinned. The padding puts both back inside; the bottom 16px
      is the band of fill the content disappears under. */
   margin: -16px -16px 0;
-  padding: 16px 16px 24px;
+  padding: 16px 16px 16px;
   background: var(--neutral-bg);
   transform: translateY(calc(var(--scroll-back-shift, 0px) * -1));
 }
@@ -408,6 +408,8 @@ body:has(.page.swipe-entering-from-right),
 
 /* Buttons */
 .btn {
+  appearance: none;
+  -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -502,7 +504,7 @@ body:has(.page.swipe-entering-from-right),
 
 .btn-sm {
   padding: 8px 16px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .btn-block {
@@ -578,7 +580,7 @@ body:has(.page.swipe-entering-from-right),
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
@@ -599,6 +601,39 @@ body:has(.page.swipe-entering-from-right),
 .field textarea:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+/* Replaces the native dropdown arrow with the same 36px circle chevron the
+   game cards use for their "open" affordance (.game-list-item-actions
+   .icon-btn), pointed down instead of right so it reads as "expand" rather
+   than "navigate". The select itself still spans and handles the full field —
+   this is a visual overlay, not a second control. */
+.select-wrap {
+  position: relative;
+}
+
+.select-wrap select {
+  width: 100%;
+  padding-right: 52px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.select-chevron {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  background: #ffffff;
+  border: 1px solid #e5e3e0;
+  color: #1a1816;
+  pointer-events: none;
 }
 
 .field textarea {
@@ -658,6 +693,9 @@ body:has(.page.swipe-entering-from-right),
   text-align: center;
   gap: 12px;
   padding: 64px 0 0;
+  /* Dragging the logo sweeps the pointer across the subtitle below it;
+     without this the browser's native text-selection triggers mid-drag. */
+  user-select: none;
 }
 
 /* Pinned to the page's top-right corner regardless of how the rest of .home's
@@ -674,10 +712,27 @@ body:has(.page.swipe-entering-from-right),
   left: 0;
 }
 
-.home-logo {
+.home-logo-wrap {
+  position: relative;
   width: 280px;
-  height: auto;
   margin: 0 0 8px;
+}
+
+/* Covers every "GAMES!" row of the reconstructed logo as one shared drag
+   surface - height is set inline (LOGO_TOTAL_HEIGHT in HomeContent.jsx). */
+.home-logo-letters {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  touch-action: none;
+}
+
+.home-logo-letter {
+  position: absolute;
+  touch-action: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 .home-subtitle {
@@ -687,10 +742,34 @@ body:has(.page.swipe-entering-from-right),
   max-width: 380px;
 }
 
+/* Both buttons carry the same rotating conic sweep, ported from hover.dev's AI
+   Gradient Animation Card — Play A Game wears it as its fill, Browse Game Types
+   as its outline. That card spins the gradient's `from` angle with a motion
+   value; there's no animation library here, so a registered custom property
+   does the same job. @property is what makes an <angle> interpolable, since an
+   unregistered custom property animates as a discrete string and would jump
+   rather than sweep. */
+@property --ring-turn {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: true;
+}
+
+@keyframes home-ring-turn {
+  to {
+    --ring-turn: 360deg;
+  }
+}
+
 /* Home's two actions: play blind, or open the sheet and choose. Pinned 16px
    above the bottom edge, FAB-style, so they stay reachable regardless of how
    much empty space sits above them. `fixed` resolves against the device
-   frame on desktop the same way .fab's does, via the frame's transform. */
+   frame on desktop the same way .fab's does, via the frame's transform.
+
+   The angle is animated here rather than on each button, and --ring-turn
+   inherits, so one animation drives both pills and they can never drift out of
+   phase — which two independent animations would, since the Game Types sheet
+   mounts its inert copy of HomeContent at a different time. */
 .home-actions {
   position: fixed;
   left: 50%;
@@ -702,10 +781,193 @@ body:has(.page.swipe-entering-from-right),
   flex-direction: column;
   gap: 12px;
   z-index: 15;
+  animation: home-ring-turn 3s linear infinite;
+
+  /* Both sweeps run the reference's pink → purple → indigo → sky → teal → amber
+     hues remapped onto the app palette, so the two buttons read as one system.
+     Literal hex rather than the palette vars because the stroke's fade-outs
+     rely on the `…00` alpha suffix, which var() can't be concatenated into.
+
+     The stroke fades to transparent copies of the adjacent colour rather than
+     to `transparent`: that keyword is rgba(0, 0, 0, 0), so interpolating to it
+     drags the ring through a dark smudge. Those gaps are wanted on the outline
+     and fatal on a fill — on a short wide pill nearly all the area sits at
+     angles near 0°/180°, exactly where the gap falls, so half the button would
+     stay uncoloured. The fill therefore closes the loop, repeating the first
+     hue last so the wrap-around seam is invisible.
+
+     The fill also pushes the cone's centre to 150%, just below the pill. Every
+     hue converges at that centre, so blurring across it averages opposing hues
+     into grey — measured, the fill desaturated to S9 mid-button against the
+     S55-88 of the game-type tiles. Moving the convergence point off the visible
+     area lifts the worst case to ~S45 and keeps the whole pill in the tiles'
+     range. Further out (250%+) barely improves saturation and flattens the
+     button toward a single colour, since less of the wheel crosses it. */
+  --ring-gradient: conic-gradient(
+    from var(--ring-turn),
+    #f0a0dc00 0%,
+    #f0a0dc00 5%,
+    #f0a0dc 10%,
+    #cba8f0 18%,
+    #b2b8f5 26%,
+    #bfe8fb 34%,
+    #a9d97c 42%,
+    #f5c97a 46%,
+    #f5c97a00 52%,
+    #f5c97a00 56%
+  );
+  --fill-gradient: conic-gradient(
+    from var(--ring-turn) at 50% 150%,
+    #f0a0dc,
+    #cba8f0,
+    #b2b8f5,
+    #bfe8fb,
+    #a9d97c,
+    #f5c97a,
+    #f0a0dc
+  );
 }
 
-/* Both are full-width pills; the fill is what separates them — Play A Game
-   is the brightest thing on the page, Browse More Game Types is an outline. */
+/* The icon thrown up from behind Play A Game, reproduced from the After Effects
+   reference in src/assets (Games_SVG_Animation_1.mp4 + its 120-frame PNG
+   sequence). Measured off those frames rather than eyeballed: 375x812 at 1x, no
+   horizontal drift at all, a 45-frame rise and a 45-frame fall that mirror each
+   other, then 30 frames at rest — 2s in total.
+
+   It can't live inside .home-play-btn: that button is overflow: hidden and
+   isolation: isolate (below), and it's 60px against a 100px icon. Nor can it
+   simply sit behind the pair and rely on them to hide it, because
+   .home-viewall-btn is genuinely transparent — the icon would show through it
+   and through the 12px gap. So this wrapper does the hiding itself, with its
+   bottom edge on the pill's top edge (.home-actions has no padding, so
+   bottom: 100% lands exactly there) and the icon parked below that line. */
+.home-toss {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  /* Travel plus the box's diagonal (100√2 ≈ 141). Only ~21px of that is strictly
+     required — the margin by which a 45° box's corners overhang its own top edge
+     — but the diagonal is the bound that holds for any artwork at any angle, and
+     an over-tall clip rect costs nothing since nothing paints up here. */
+  height: calc(var(--toss-travel, 330px) + 142px);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.home-toss__icon {
+  position: absolute;
+  /* Box top flush with the wrapper's bottom edge, so the icon rests fully
+     clipped and rises out from behind the pill instead of in from off-screen.
+     The reference starts the same way — its box sat 4.5px below the screen
+     edge, close enough that the launch reads identically. */
+  top: 100%;
+  left: 50%;
+  width: 100px;
+  height: 100px;
+  /* Half the box, plus this icon's own offset from centre (--toss-x, derived in
+     HomeContent.jsx). Not a transform: translate is the arc's, and stacking a
+     second one here would fight it. */
+  margin-left: calc(-50px + var(--toss-x, 0px));
+  /* Each type brings its own file with its own colours (TYPE_TOSS_ICONS in
+     gameTypes.js), which is why this is an <img> and not a tinted mask - a mask
+     would flatten multi-coloured artwork to a single fill. `contain` does nothing
+     for the square placeholders but centres the 100x64 / 64x100 artwork real
+     icons will bring, so the arc and the centre of rotation stay art-independent. */
+  object-fit: contain;
+  /* No will-change: these animate compositable properties continuously so the
+     browser promotes them anyway, and as an always-on hint across eighteen
+     elements it would just pin eighteen layers open for nothing. */
+  /* Duration is the whole cycle through every group, not one throw - each icon
+     is mounted the entire time and simply waits at its hidden rest pose until
+     its turn comes round. See --toss-delay below. */
+  animation:
+    home-toss-arc var(--toss-cycle, 4400ms) linear infinite,
+    home-toss-spin var(--toss-cycle, 4400ms) linear infinite;
+  /* After the shorthand, which would otherwise reset it to 0. One value covers
+     both animations in the list, which is what keeps an icon's arc and its spin
+     staggered together instead of against each other. The first cycle just holds
+     at 0% for the delay, and 0% is the hidden rest pose, so nothing shows. */
+  animation-delay: var(--toss-delay, 0ms);
+}
+
+/* Two animations on one element, and translate/rotate rather than transform,
+   because the two need different easings: the arc is violently eased and the
+   spin is dead linear, which a single transform can't express. Splitting them
+   across nested elements would work too, but as separate properties on one
+   element they cannot drift out of phase. */
+@keyframes home-toss-arc {
+  /* The reference's authored curve, sampled at every one of the rise's 45
+     frames. Baked in as linear() stops rather than fitted, because the motion is
+     far more aggressive than real gravity — a projectile covers 40% of its
+     travel in the first 22% of the time, this covers 63% — and the closest
+     single cubic-bezier(0.2, 0.58, 0.16, 1) still misses by up to 6.7px
+     mid-flight. These reproduce it to within 0.08px. */
+  0% {
+    translate: 0 0;
+    animation-timing-function: linear(0, 0.0832, 0.1287, 0.1948, 0.2817, 0.3708, 0.4473, 0.5134, 0.5669, 0.6124, 0.6527, 0.6853, 0.7155, 0.7429, 0.768, 0.7904, 0.8103, 0.8276, 0.845, 0.8597, 0.8744, 0.8868, 0.899, 0.9088, 0.9183, 0.9282, 0.9354, 0.9452, 0.9499, 0.9571, 0.9646, 0.9693, 0.9739, 0.9788, 0.9811, 0.986, 0.9884, 0.9907, 0.993, 0.9953, 0.9953, 0.9977, 0.9977, 1, 1, 1);
+  }
+
+  /* The apex, at half the 1500ms flight. These two percentages are the one place
+     the timeline is hard-coded: they encode the flight as a fraction of the whole
+     cycle, so they are (750 / cycle) and (1500 / cycle). Currently 19800ms — nine
+     groups of 200ms stagger + 1500ms flight + 500ms beat — giving 3.7879% and
+     7.5758%. Change a timing or the number of colours in HomeContent.jsx and these
+     have to be recomputed; nothing else does, and a dev-only check there warns
+     with the numbers when they drift.
+
+     The fall is the rise mirrored — verified symmetric against the reference to
+     within ~1px. --toss-drop shortens this icon's throw without touching the
+     curve: every icon still takes the same 45 frames up, so a shorter throw is a
+     gentler one, exactly as a real toss reads. */
+  3.7879% {
+    translate: 0 calc((var(--toss-travel, 330px) - var(--toss-drop, 0px)) * -1);
+    animation-timing-function: linear(0, 0, 0, 0.0023, 0.0023, 0.0047, 0.0047, 0.007, 0.0093, 0.0116, 0.014, 0.0189, 0.0212, 0.0261, 0.0307, 0.0354, 0.0429, 0.0501, 0.0548, 0.0646, 0.0718, 0.0817, 0.0912, 0.101, 0.1132, 0.1256, 0.1403, 0.155, 0.1724, 0.1897, 0.2096, 0.232, 0.2571, 0.2845, 0.3147, 0.3473, 0.3876, 0.4331, 0.4866, 0.5527, 0.6292, 0.7183, 0.8052, 0.8713, 0.9168, 1);
+  }
+
+  /* Landed. Everything from here to 100% is this icon waiting - its own beat,
+     then the other eight groups taking their turns - all of it at the hidden
+     rest pose, which is why one set of keyframes serves all eighteen. */
+  7.5758%,
+  100% {
+    translate: 0 0;
+  }
+}
+
+@keyframes home-toss-spin {
+  /* Linear across the whole flight, measured at exactly 1°/frame: 0° at launch,
+     half of --toss-spin at the apex, all of it as it lands. A negative value
+     counter-rotates, which is the cheapest way to stop two icons thrown together
+     from reading as one rigid object.
+
+     The ±90° → 0° reset between loops is invisible for *any* artwork, symmetric
+     or not: it happens at translate 0, where the icon sits wholly behind the clip
+     above, and 0°/90° are both axis-aligned so the box stays below that line at
+     either angle. Asymmetric art is safe here. Note it does land rotated a quarter
+     turn, though — art that should land upright wants a full ±360° instead. */
+  0% {
+    rotate: 0deg;
+  }
+
+  /* Matches the arc's landing percentage, so the spin stops the instant the icon
+     touches down and then holds through the wait. */
+  7.5758%,
+  100% {
+    rotate: var(--toss-spin, 90deg);
+  }
+}
+
+/* No frozen pose to fall back on: the icon's rest state is "hidden behind the
+   button", so holding it mid-air would invent a composition the design never
+   had. Hiding it leaves Home exactly as it was before the throw existed. */
+@media (prefers-reduced-motion: reduce) {
+  .home-toss {
+    display: none;
+  }
+}
+
+/* Both are full-width pills; how they wear the sweep is what separates them —
+   Play A Game is filled by it, Browse Game Types only outlined. */
 .home-play-btn,
 .home-viewall-btn {
   width: 100%;
@@ -713,23 +975,111 @@ body:has(.page.swipe-entering-from-right),
   font-size: 16px;
 }
 
-/* Pure white rather than the theme's off-white --text, so the pill reads as
-   the brightest thing on the page. */
+/* White is no longer the visible fill, but it stays as the base the gradient
+   below sits on: it fills the corners the blur softens, and it's what the pill
+   falls back to if @property or filter isn't supported. */
 .home-play-btn {
   height: 60px;
   background: #ffffff;
   color: var(--neutral-bg);
+  position: relative;
+  /* Same pair of reasons as .home-viewall-btn below: clip the oversized layer
+     to the pill, and keep its negative z-index scoped to this button. */
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* The fill. Blurring it is not decoration — painted sharp, a conic gradient's
+   centre is a visible singularity, and a hard pinwheel spoke radiates from the
+   middle of the pill. The outline never shows this because it only ever samples
+   the perimeter. No radial mask either, which is the deliberate difference from
+   .home-viewall-btn::after: there the mask hollows out the middle to leave an
+   edge glow, here the colour should reach edge to edge.
+
+   Oversized so the blur has real gradient beyond the pill's edges to pull from,
+   rather than fading toward transparent at the rim. */
+.home-play-btn::after {
+  content: '';
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  border-radius: inherit;
+  background-image: var(--fill-gradient);
+  filter: blur(18px);
+  pointer-events: none;
 }
 
 .home-viewall-btn {
   height: 60px;
   background: transparent;
   color: #ffffff;
-  border: 1.5px solid #ffffff;
+  border: none;
+  position: relative;
+  /* Clips the glow below to the pill, and keeps its negative z-index scoped
+     to this button instead of letting it fall behind .home-actions. */
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* The ring. Two-layer mask — one covering the whole box, one only the content
+   box, excluded from each other — leaves just the 1.5px padding ring painted,
+   so the button's centre stays genuinely transparent (a padding-box/border-box
+   background trick would need to bake in the page colour). The flat white sits
+   under the gradient because the sweep is transparent for nearly half its
+   length; without it the outline would visibly break apart as it turns. */
+.home-viewall-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background-image: var(--ring-gradient);
+  background-color: rgba(255, 255, 255, 0.3);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* The glow the gradient spills inside the pill: the same sweep, blurred, then
+   hollowed out by a radial mask so the colour hugs the edges and leaves the
+   label readable. z-index keeps it under the text but over the background.
+
+   The stop percentages are the one place this had to diverge from the
+   reference. Its mask is sized `ellipse 100% 100%`, so the radii track the
+   box's own proportions, and the card it was written for is roughly square —
+   on a 343x60 pill the same 50% inner stop puts the whole button inside the
+   transparent core and nothing renders. Pulling the core in to 38% and landing
+   opaque by 78% puts the falloff back over the button's edges. */
+.home-viewall-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-image: var(--ring-gradient);
+  filter: blur(12px);
+  opacity: 0.55;
+  -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, transparent 38%, #000 78%);
+  mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, transparent 38%, #000 78%);
+  pointer-events: none;
 }
 
 .home-viewall-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
+}
+
+/* Holding the angle still leaves both buttons statically multi-coloured rather
+   than flat, so neither loses its identity when motion is off. */
+@media (prefers-reduced-motion: reduce) {
+  .home-actions {
+    animation: none;
+  }
 }
 
 /* Also used by the Game Types sheet's own grid (.sheet-grid in GameTypes.jsx),
@@ -812,6 +1162,19 @@ body:has(.page.swipe-entering-from-right),
   height: 100%;
   transform: translateY(-100%);
   pointer-events: none;
+}
+
+/* That copy mounts mid-gesture, the moment a close starts - so it used to begin
+   a throw of its own, which was then thrown away 300ms later when navigate('/')
+   mounted the real Home and restarted the animation from zero on a freshly
+   shuffled order. Read as an icon that flew, vanished, and relaunched in another
+   colour. The backdrop only ever needs to be scenery, so the real Home owns the
+   animation outright and this copy shows the page at rest.
+
+   display over animation: none so the eighteen images don't render or animate at
+   all here, and it matches how the reduced-motion rule quiets this same element. */
+.sheet-behind .home-toss {
+  display: none;
 }
 
 .sheet {
@@ -949,7 +1312,7 @@ body:has(.page.swipe-entering-from-right),
   border-radius: var(--radius-pill);
   background: var(--text);
   color: var(--bg);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -982,7 +1345,7 @@ body:has(.page.swipe-entering-from-right),
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
@@ -1033,7 +1396,7 @@ body:has(.page.swipe-entering-from-right),
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
@@ -1340,15 +1703,15 @@ body:has(.page.swipe-entering-from-right),
 }
 
 .details-type-tag {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .details-title {
   font-family: var(--font-header);
   font-weight: 500;
-  font-size: 48px;
+  font-size: 40px;
   line-height: 1.05;
-  margin: 0 0 12px;
+  margin: 0 0 4px;
   color: #1a1816;
 }
 
@@ -1356,7 +1719,7 @@ body:has(.page.swipe-entering-from-right),
   color: #33302b;
   font-size: 16px;
   line-height: 20px;
-  margin: 0;
+  margin: 8px 0 0;
 }
 
 .details-stats {
@@ -1385,7 +1748,7 @@ body:has(.page.swipe-entering-from-right),
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  font-size: 11px;
+  font-size: 12px;
   color: #33302b;
   margin-bottom: 2px;
 }
@@ -1569,31 +1932,56 @@ body:has(.page.swipe-entering-from-right),
   transform: none;
 }
 
-/* Floating action button for the primary "add" action */
+/* Floating action button for the primary "add" action. Wears the same
+   rotating conic-gradient fill as .home-play-btn (see the Home actions
+   section above for the full rationale) so the app's one "primary" affordance
+   reads consistently wherever it appears. It isn't a descendant of
+   .home-actions, so it carries its own --ring-turn animation and gradient
+   rather than inheriting one. */
 .fab {
   position: fixed;
   bottom: max(24px, env(safe-area-inset-bottom));
   right: max(20px, calc((100vw - 640px) / 2 + 20px));
-  width: 56px;
   height: 56px;
-  border-radius: 50%;
+  padding: 0 22px 0 18px;
+  border-radius: var(--radius-pill);
   border: none;
-  background: #B1BFFF;
-  color: #1a1816;
+  background: #ffffff;
+  color: var(--neutral-bg);
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 13px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   z-index: 15;
-  transition: transform 0.05s ease, background-color 0.15s ease;
+  overflow: hidden;
+  isolation: isolate;
+  animation: home-ring-turn 3s linear infinite;
+  transition: transform 0.05s ease;
 }
 
-/* A solid shade rather than a lower opacity: the FAB floats over both cards
-   and the dark page background, so a translucent hover would read as a
-   different color depending on what's underneath it. */
-.fab:hover {
-  background: #A3B0E9;
+.fab::after {
+  content: '';
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  border-radius: inherit;
+  background-image: conic-gradient(
+    from var(--ring-turn) at 50% 150%,
+    #f0a0dc,
+    #cba8f0,
+    #b2b8f5,
+    #bfe8fb,
+    #a9d97c,
+    #f5c97a,
+    #f0a0dc
+  );
+  filter: blur(18px);
+  pointer-events: none;
 }
 
 .fab:active {
@@ -1601,7 +1989,13 @@ body:has(.page.swipe-entering-from-right),
 }
 
 .fab .material-symbols-outlined {
-  font-size: 34px;
+  font-size: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fab {
+    animation: none;
+  }
 }
 
 .filter-chip-row {
@@ -1671,9 +2065,14 @@ body:has(.page.swipe-entering-from-right),
   margin-top: 12px;
 }
 
-/* The fixed alphabet index rail is pinned to the page's right edge and is
-   narrow enough to sit entirely inside the 16px gutter `.page` already has, so
-   index pages need no extra padding — every page keeps a uniform 16px. */
+/* Only All Games carries the fixed A-Z rail. Narrowing the list by 11px on the
+   right there gives the rail room to be touched, leaving the cards
+   left-aligned against the page's left gutter (matches the Food Fight
+   all-meals grid). Game type pages have no rail, so their list stays the full
+   width .page's 16px gutters already leave it. */
+.game-list--indexed {
+  margin-right: 11px;
+}
 
 .game-list-group {
   display: flex;
@@ -1705,12 +2104,18 @@ body:has(.page.swipe-entering-from-right),
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  /* Inset the letters 2px from the frame edge and give the rail a wider, easier
+     touch target, matching the Food Fight all-meals index. */
+  padding: 6px 2px;
 }
 
 .alphabet-index-letter {
-  /* 2px (not 4px) side padding keeps the whole rail under 16px wide so it fits
-     inside the page's 16px right gutter without overlapping card content. */
-  padding: 1px 2px;
+  /* Wider side padding than the vertical gap between letters, widening the
+     touch target without changing letter spacing — the rail has room now that
+     .game-list narrows the cards away from the frame edge (see margin-right
+     on .game-list). Extended equally left and right so the rail stays
+     centered on the letters. */
+  padding: 1px 6px;
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 700;
@@ -1754,7 +2159,8 @@ body:has(.page.swipe-entering-from-right),
   background: #ffffff;
   border: 1px solid #e5e3e0;
   border-radius: var(--radius-card);
-  padding: 16px 18px;
+  padding: 16px;
+  cursor: pointer;
 }
 
 .game-list-item-header {
@@ -1764,16 +2170,27 @@ body:has(.page.swipe-entering-from-right),
   gap: 12px;
 }
 
+.game-list-item-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.game-list-item-fav-icon {
+  font-size: 20px;
+  color: #1a1816;
+  opacity: 0.5;
+}
+
 .game-list-item-main {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  cursor: pointer;
 }
 
 .game-list-item-type {
   align-self: flex-start;
-  margin-bottom: 6px;
+  margin-bottom: 0;
 }
 
 .game-list-item-title {
@@ -1819,6 +2236,8 @@ body:has(.page.swipe-entering-from-right),
 }
 
 .game-list-item-actions .icon-btn {
+  width: 36px;
+  height: 36px;
   background: #ffffff;
   border-color: #e5e3e0;
   color: #1a1816;
@@ -1908,15 +2327,16 @@ body:has(.page.swipe-entering-from-right),
   display: flex;
   flex-direction: column;
   width: 100%;
-  /* Sized by its contents rather than the track, so the deck sits as a band of
-     short cards. Every card comes out the same height anyway: the description is
-     clamped and the stats block below it is a fixed three rows. */
+  /* Locked so every card in the deck matches regardless of how much content it
+     holds — a short card just leaves empty space below its stats rather than
+     shrinking to fit, which is what kept the deck looking uneven side by side. */
+  height: 438px;
   max-height: 100%;
   overflow: hidden;
   background: #ffffff;
   border: 1px solid #e5e3e0;
   border-radius: var(--radius-card);
-  padding: 18px;
+  padding: 16px;
   cursor: pointer;
 }
 
@@ -1927,7 +2347,65 @@ body:has(.page.swipe-entering-from-right),
   gap: 12px;
 }
 
+.carousel-card__top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.carousel-card__fav-icon {
+  font-size: 20px;
+  color: #1a1816;
+  opacity: 0.5;
+}
+
+/* Read-only rating shown on cards, sized via --star-size (12px on the game
+   list and card carousel). */
+.star-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.star-rating__star {
+  font-size: var(--star-size, 12px);
+  color: #1a1816;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  margin-inline: -4px;
+}
+
+.star-rating__star:first-child {
+  margin-inline-start: -2px;
+}
+
+.star-rating__star:last-child {
+  margin-inline-end: -2px;
+}
+
+.star-rating__star.is-filled {
+  color: #1a1816;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.star-rating__star.is-half {
+  color: #1a1816;
+}
+
+.star-rating--muted {
+  opacity: 0.5;
+}
+
+.carousel-card__body .star-rating {
+  margin-top: 6px;
+}
+
+.game-list-item-main .star-rating {
+  margin-top: 4px;
+}
+
 .carousel-card .icon-btn {
+  width: 36px;
+  height: 36px;
   background: #ffffff;
   border-color: #e5e3e0;
   color: #1a1816;
@@ -1940,7 +2418,9 @@ body:has(.page.swipe-entering-from-right),
 .carousel-card__body {
   flex: 0 1 auto;
   min-height: 0;
-  margin-top: 16px;
+  /* The floor the stats block's `auto` top margin is allowed to close to, so a
+     card whose text nearly fills the box still breathes above the stats. */
+  margin: 0 0 16px;
 }
 
 .carousel-card__title {
@@ -1948,19 +2428,23 @@ body:has(.page.swipe-entering-from-right),
   font-weight: 500;
   font-size: 40px;
   line-height: 1.05;
-  margin: 0;
+  margin: 8px 0 0;
   color: #1a1816;
-  /* A long title stays on one line and trails off rather than pushing the stats
-     block off the bottom of the card. */
+  /* Two lines, then an ellipsis. Every title in the library fits inside two at
+     this size, so the clamp is a backstop rather than something the deck hits —
+     and the stats block below is bottom-anchored, so the second line eats into
+     the card's slack instead of pushing anything off the bottom. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Three lines, then an ellipsis — the full text is one tap away on the details
    page, so a long description never has to set the card's height. */
 .carousel-card__desc {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   font-size: 16px;
   line-height: 20px;
   color: #33302b;
@@ -1971,9 +2455,19 @@ body:has(.page.swipe-entering-from-right),
   overflow: hidden;
 }
 
+/* The card is a fixed height and its text is not, so the stats block is the
+   constant: pinned to the bottom edge on every card, with the slack a short
+   title or description leaves behind absorbed as empty space above it rather
+   than as a stats block that sits at a different height card to card. The 16px
+   on the body is the floor that `auto` is allowed to close to. */
+/* Players, Time, and Materials stack in one column, each on its own row, so
+   the eye reads straight down instead of jumping left-right-down. */
 .carousel-card__stats {
   flex: none;
-  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
   margin-bottom: 0;
 }
 
@@ -2001,12 +2495,19 @@ body:has(.page.swipe-entering-from-right),
 }
 
 /* Sits below the counter. .page already carries 16px of bottom padding, so
-   8px more here lands the row 24px clear of the viewport edge. */
+   8px more here lands the row 24px clear of the viewport edge.
+   Four equal-width columns rather than centered intrinsic-width flex items —
+   Rating's label goes from "RATING" to "RATING 4.0" once a score is set, and
+   as a flex item that extra width used to change the row's total content
+   width and re-centre every button around it. A grid column has a fixed
+   width regardless of what its content measures, so the icons stay put. */
 .card-carousel__actions {
   flex: none;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 80px);
   justify-content: center;
-  gap: 40px;
+  gap: 4px;
+  height: 62.5px;
   margin-top: 24px;
   margin-bottom: 8px;
 }
@@ -2025,10 +2526,126 @@ body:has(.page.swipe-entering-from-right),
 
 .card-carousel__action .material-symbols-outlined {
   font-size: 42px;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  transition: color 120ms ease;
+}
+
+/* Persisted toggles: Played (green), Favorite (orange) and Rating (yellow),
+   filled and colored once active. Share has no state to persist, so it only
+   flashes blue on press, below. */
+.card-carousel__action--played.is-active {
+  color: var(--primary-green);
+}
+
+.card-carousel__action--favorite.is-active {
+  color: var(--primary-orange);
+}
+
+.card-carousel__action--rating.is-active {
+  color: var(--primary-yellow);
+}
+
+.card-carousel__action--played.is-active .material-symbols-outlined,
+.card-carousel__action--favorite.is-active .material-symbols-outlined,
+.card-carousel__action--rating.is-active .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.card-carousel__action--share:active {
+  color: var(--primary-blue);
+}
+
+.card-carousel__action--rating:active {
+  color: var(--primary-yellow);
+}
+
+.card-carousel__action-text {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.card-carousel__action-sublabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+/* Takes over the actions row while picking a rating: a back arrow to bail
+   out, plus five big tap targets sized like the icons they replace. Same
+   height as .card-carousel__actions so swapping between them doesn't change
+   how much room the track above gets to grow into. */
+.card-carousel__rating-picker {
+  flex: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 62.5px;
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
+
+/* .card-carousel breaks out of .page's 16px gutters (see its negative
+   margin above), so this row's left edge is the screen edge — the same
+   reference point .page's bottom padding plus this row's margin-bottom
+   measure 24px of clearance from, below. Left offset matches that 24px so
+   the chevron reads as equidistant from the left and bottom edges. */
+.card-carousel__rating-back {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.card-carousel__rating-back .material-symbols-outlined {
+  font-size: 32px;
+}
+
+.card-carousel__rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  touch-action: none;
+  user-select: none;
+}
+
+.card-carousel__rating-star-btn {
+  display: flex;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.card-carousel__rating-star-btn .material-symbols-outlined {
+  font-size: 42px;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.card-carousel__rating-star-btn.is-filled {
+  color: var(--primary-yellow);
+}
+
+.card-carousel__rating-star-btn.is-filled .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.card-carousel__rating-star-btn.is-half {
+  color: var(--primary-yellow);
 }
 
 .card-carousel__action-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -2050,7 +2667,7 @@ body:has(.page.swipe-entering-from-right),
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  padding: 14px 18px;
+  padding: 16px;
 }
 
 .type-list-item-name {
@@ -2121,7 +2738,7 @@ body:has(.page.swipe-entering-from-right),
     grid-template-columns: 1fr;
   }
   .details-title {
-    font-size: 36px;
+    font-size: 40px;
   }
 }
 
@@ -2252,6 +2869,6 @@ body:has(.page.swipe-entering-from-right),
   }
 
   .device-frame .details-title {
-    font-size: 36px;
+    font-size: 40px;
   }
 }

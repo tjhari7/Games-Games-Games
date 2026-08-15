@@ -11,25 +11,27 @@ import { groupByLetter } from '../lib/alphabetIndex.js';
 import { scrollPageTo } from '../lib/pageScroll.js';
 import { useScrollRestoration } from '../lib/useScrollRestoration.js';
 import { useScrollBackHeader } from '../lib/useScrollBackHeader.js';
-import { useHorizontalSwipeToHome } from '../lib/pageSwipe.js';
+import { useHorizontalSwipeBack } from '../lib/pageSwipe.js';
 import { CARD_VIEW, useGameViewMode } from '../lib/useGameViewMode.js';
+import { useFavoriteGames } from '../lib/useFavoriteGames.js';
+import { useGameRatings } from '../lib/useGameRatings.js';
+import StarRating from '../components/StarRating.jsx';
 
 const SpeechRecognition =
   typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
 
-// Card view is being tried out on one type page before it goes to the rest of
-// them. Set to null to offer it on every type page.
-const CARD_VIEW_TYPES = ['act out'];
-
 export default function CategoryGames() {
   const navigate = useNavigate();
-  // Sits to Home's left, so it comes in from the left and leaves back off to
-  // the left. See lib/pageSwipe.js.
-  const { startBack, swipeClass, rootProps } = useHorizontalSwipeToHome();
+  // Sits to Home's left, so it comes in from the left — but unlike the menu
+  // and favorites, it's only ever opened from the Game Types sheet, so back
+  // returns there instead of all the way to Home. See lib/pageSwipe.js.
+  const { startBack, swipeClass, rootProps } = useHorizontalSwipeBack('/game-types');
   // Header, search and filter ride in one block that scrolls away downward and
   // comes back on any upward scroll. See lib/useScrollBackHeader.js.
   const { ref: headerRef } = useScrollBackHeader();
   const [viewMode, setViewMode] = useGameViewMode();
+  const { isFavorite } = useFavoriteGames();
+  const { getRating } = useGameRatings();
   const { typeId } = useParams();
   const [type, setType] = useState(null);
   const [games, setGames] = useState([]);
@@ -44,8 +46,7 @@ export default function CategoryGames() {
 
   const letterGroups = useMemo(() => groupByLetter(games, (g) => g.title), [games]);
 
-  const cardViewOffered = !!type && (!CARD_VIEW_TYPES || CARD_VIEW_TYPES.includes(type.name.toLowerCase()));
-  const cardView = cardViewOffered && viewMode === CARD_VIEW;
+  const cardView = !!type && viewMode === CARD_VIEW;
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
@@ -142,7 +143,7 @@ export default function CategoryGames() {
           centered
           tight
           onBack={startBack}
-          actions={cardViewOffered ? <ViewModeToggle mode={viewMode} onChange={setViewMode} /> : null}
+          actions={type ? <ViewModeToggle mode={viewMode} onChange={setViewMode} /> : null}
         />
 
         {error && <div className="error-message">{error}</div>}
@@ -232,22 +233,33 @@ export default function CategoryGames() {
             <div key={group.letter} className="game-list-group">
               <div className="game-list-letter-heading">{group.letter}</div>
               {group.items.map((g) => (
-                <div className="game-list-item" key={g.id}>
+                <div className="game-list-item" key={g.id} onClick={() => navigate(`/games/${g.id}`)}>
                   <div className="game-list-item-header">
-                    <span
-                      className="type-tag game-list-item-type"
-                      style={{ color: TYPE_TEXT_COLOR, background: typePillColor(g.type_name, g.type_bg) }}
-                    >
-                      {g.type_name}
-                    </span>
+                    <div className="game-list-item-header-left">
+                      <span
+                        className="type-tag game-list-item-type"
+                        style={{ color: TYPE_TEXT_COLOR, background: typePillColor(g.type_name, g.type_bg) }}
+                      >
+                        {g.type_name}
+                      </span>
+                      {isFavorite(g.id) && (
+                        <span
+                          className="material-symbols-outlined game-list-item-fav-icon"
+                          style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
+                        >
+                          favorite
+                        </span>
+                      )}
+                    </div>
                     <div className="game-list-item-actions">
-                      <button className="icon-btn" onClick={() => navigate(`/games/${g.id}`)} aria-label="View">
+                      <span className="icon-btn" aria-hidden="true">
                         <span className="material-symbols-outlined">chevron_right</span>
-                      </button>
+                      </span>
                     </div>
                   </div>
-                  <div className="game-list-item-main" onClick={() => navigate(`/games/${g.id}`)}>
+                  <div className="game-list-item-main">
                     <div className="game-list-item-title">{g.title}</div>
+                    <StarRating value={getRating(g.id)} size={16} className="star-rating--muted" />
                     {g.description && <p className="game-list-item-description">{g.description}</p>}
                     <div className="game-list-item-meta">
                       {g.players && (

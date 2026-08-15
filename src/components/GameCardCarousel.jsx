@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { typePillColor, TYPE_TEXT_COLOR } from '../lib/typeColors.js';
+import { useFavoriteGames } from '../lib/useFavoriteGames.js';
+import { useMarkedPlayed } from '../lib/useMarkedPlayed.js';
+import { useGameRatings } from '../lib/useGameRatings.js';
+import StarRating from './StarRating.jsx';
+import StarRatingPicker from './StarRatingPicker.jsx';
 
 // One game per card, swiped through left and right, with the cards either side
 // hanging off the screen edges as a hint that there are more.
@@ -27,15 +32,25 @@ function naIfEmpty(value) {
   return value && value.trim() ? value : 'N/A';
 }
 
-function CarouselCard({ game, onOpen, onEdit }) {
+function CarouselCard({ game, rating, favorite, onOpen, onEdit }) {
   const pill = typePillColor(game.type_name, game.type_bg);
 
   return (
     <article className="carousel-card" onClick={() => onOpen(game)}>
       <div className="carousel-card__top">
-        <span className="type-tag" style={{ color: TYPE_TEXT_COLOR, background: pill }}>
-          {game.type_name}
-        </span>
+        <div className="carousel-card__top-left">
+          <span className="type-tag" style={{ color: TYPE_TEXT_COLOR, background: pill }}>
+            {game.type_name}
+          </span>
+          {favorite && (
+            <span
+              className="material-symbols-outlined carousel-card__fav-icon"
+              style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
+            >
+              favorite
+            </span>
+          )}
+        </div>
         <button
           className="icon-btn"
           type="button"
@@ -51,11 +66,14 @@ function CarouselCard({ game, onOpen, onEdit }) {
 
       <div className="carousel-card__body">
         <h2 className="carousel-card__title">{game.title}</h2>
+        <StarRating value={rating} size={16} className="star-rating--muted" />
         {game.description && <p className="carousel-card__desc">{game.description}</p>}
       </div>
 
       {/* The same three stats the details page opens with, so the card carries
-          everything needed to pick a game without tapping into it. */}
+          everything needed to pick a game without tapping into it. Players and
+          Time pair up on one row here — see the grid in index.css — and
+          Materials, the only one that runs long, takes the row below. */}
       <div className="details-stats carousel-card__stats">
         <div className="stat-row">
           <span className="material-symbols-outlined">group</span>
@@ -71,7 +89,7 @@ function CarouselCard({ game, onOpen, onEdit }) {
             <div className="stat-row-value">{naIfEmpty(game.time)}</div>
           </div>
         </div>
-        <div className="stat-row">
+        <div className="stat-row stat-row--wide">
           <span className="material-symbols-outlined">inventory_2</span>
           <div>
             <div className="stat-row-label">Materials</div>
@@ -84,6 +102,10 @@ function CarouselCard({ game, onOpen, onEdit }) {
 }
 
 export default function GameCardCarousel({ games, onOpen, onEdit }) {
+  const { isFavorite, toggleFavorite } = useFavoriteGames();
+  const { isPlayed, togglePlayed } = useMarkedPlayed();
+  const { getRating, setRating } = useGameRatings();
+  const [ratingMode, setRatingMode] = useState(false);
   const trackRef = useRef(null);
   // Which slide of the track is centred, clones included. The game showing is
   // derived from it; the ref is what the scroll and resize handlers read, since
@@ -99,6 +121,14 @@ export default function GameCardCarousel({ games, onOpen, onEdit }) {
 
   const slides = wraps ? [games[games.length - 1], ...games, games[0]] : games;
   const gameIndex = wraps ? (slideIndex - 1 + games.length) % games.length : slideIndex;
+  const currentGame = games[gameIndex] ?? null;
+
+  // Swiping to another card while the picker is open would apply the next
+  // pick to a game the user can no longer see, so close it back to the
+  // regular actions first.
+  useEffect(() => {
+    setRatingMode(false);
+  }, [gameIndex]);
 
   /* ---- geometry --------------------------------------------------------- */
 
@@ -284,7 +314,13 @@ export default function GameCardCarousel({ games, onOpen, onEdit }) {
               scrollToSlide(i, 'smooth');
             }}
           >
-            <CarouselCard game={game} onOpen={onOpen} onEdit={onEdit} />
+            <CarouselCard
+              game={game}
+              rating={getRating(game.id)}
+              favorite={isFavorite(game.id)}
+              onOpen={onOpen}
+              onEdit={onEdit}
+            />
           </div>
         ))}
       </div>
@@ -293,20 +329,54 @@ export default function GameCardCarousel({ games, onOpen, onEdit }) {
         {gameIndex + 1} of {games.length}
       </div>
 
-      <div className="card-carousel__actions">
-        <button type="button" className="card-carousel__action" aria-label="Mark as played">
-          <span className="material-symbols-outlined">visibility</span>
-          <span className="card-carousel__action-label">Played</span>
-        </button>
-        <button type="button" className="card-carousel__action" aria-label="Favorite">
-          <span className="material-symbols-outlined">favorite</span>
-          <span className="card-carousel__action-label">Favorite</span>
-        </button>
-        <button type="button" className="card-carousel__action" aria-label="Share">
-          <span className="material-symbols-outlined">ios_share</span>
-          <span className="card-carousel__action-label">Share</span>
-        </button>
-      </div>
+      {ratingMode && currentGame ? (
+        <StarRatingPicker
+          value={getRating(currentGame.id)}
+          onChange={(value) => setRating(currentGame.id, value)}
+          onBack={() => setRatingMode(false)}
+        />
+      ) : (
+        <div className="card-carousel__actions">
+          <button
+            type="button"
+            className={`card-carousel__action card-carousel__action--played${currentGame && isPlayed(currentGame.id) ? ' is-active' : ''}`}
+            aria-pressed={!!currentGame && isPlayed(currentGame.id)}
+            onClick={() => currentGame && togglePlayed(currentGame.id)}
+            aria-label="Mark as played"
+          >
+            <span className="material-symbols-outlined">casino</span>
+            <span className="card-carousel__action-label">Played</span>
+          </button>
+          <button
+            type="button"
+            className={`card-carousel__action card-carousel__action--favorite${currentGame && isFavorite(currentGame.id) ? ' is-active' : ''}`}
+            aria-pressed={!!currentGame && isFavorite(currentGame.id)}
+            onClick={() => currentGame && toggleFavorite(currentGame.id)}
+            aria-label="Favorite"
+          >
+            <span className="material-symbols-outlined">favorite</span>
+            <span className="card-carousel__action-label">Favorite</span>
+          </button>
+          <button
+            type="button"
+            className={`card-carousel__action card-carousel__action--rating${currentGame && getRating(currentGame.id) > 0 ? ' is-active' : ''}`}
+            onClick={() => currentGame && setRatingMode(true)}
+            aria-label="Rating"
+          >
+            <span className="material-symbols-outlined">star</span>
+            <span className="card-carousel__action-text">
+              <span className="card-carousel__action-label">Rating</span>
+              {currentGame && getRating(currentGame.id) > 0 && (
+                <span className="card-carousel__action-sublabel">{getRating(currentGame.id).toFixed(1)}</span>
+              )}
+            </span>
+          </button>
+          <button type="button" className="card-carousel__action card-carousel__action--share" aria-label="Share">
+            <span className="material-symbols-outlined">ios_share</span>
+            <span className="card-carousel__action-label">Share</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

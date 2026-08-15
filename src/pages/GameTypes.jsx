@@ -179,6 +179,11 @@ function useSheetStrip() {
   };
 }
 
+// Not a type from the API — a shortcut tile pinned after everything else, so
+// it's always last. Text only: there's no artwork for it yet, same as any
+// custom type the user has added.
+const FAVORITES_TILE = { id: '__favorites__', name: 'Favorites' };
+
 export default function GameTypes() {
   // The sheet sits below Home on the vertical strip: it rises from the bottom
   // as Home slides off the top. Closing is handled by the strip below, which
@@ -213,6 +218,7 @@ export default function GameTypes() {
   const browsable = types.filter((t) => !t.protected);
   const ordered = orderTypes(browsable, ALL_TYPE_ORDER, { includeUnlisted: true });
   const showSkeleton = loading && ordered.length === 0;
+  const tiles = [...ordered, FAVORITES_TILE];
 
   return (
     <div className={`page page-sheet${swipeClass}`} ref={pageRef} {...rootProps}>
@@ -238,12 +244,14 @@ export default function GameTypes() {
               ? Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="btn-tertiary home-type-skeleton" aria-hidden="true" />
                 ))
-              : ordered.map((t) => (
+              : tiles.map((t) => (
                   <button
                     key={t.id}
                     className="btn-tertiary"
                     style={{ background: typePillColor(t.name, t.bg), color: TYPE_TEXT_COLOR }}
-                    onClick={() => startForward(`/games/type/${t.id}`, 'horizontal')}
+                    onClick={() =>
+                      startForward(t.id === FAVORITES_TILE.id ? '/favorites' : `/games/type/${t.id}`, 'horizontal')
+                    }
                   >
                     {TYPE_ICONS[t.name] ? (
                       <img

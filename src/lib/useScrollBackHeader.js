@@ -14,9 +14,11 @@ import { getPageScroller, getScrollTop, offsetWithinScroller } from './pageScrol
 //
 // Put `ref` on the block — it must be a direct child of `.page` and carry
 // .scroll-back-header from index.css, which turns the distance written into
-// --scroll-back-shift into the pull-up. Call `collapse()` just before an
-// animated programmatic scroll: the upward leg of a jump-to-letter would
-// otherwise read as a scroll-back and land the section under the block.
+// --scroll-back-shift into the pull-up. Call `pinOpen()` just before an
+// animated programmatic scroll: it holds the block fully on screen for the
+// length of the scroll — whichever way the page is moving — and returns the
+// space it occupies at the top, so the caller can land its target just below
+// the block rather than underneath it.
 //
 // Reads and writes whichever container actually scrolls — the window on phones,
 // the device frame's inner scroller on desktop/tablet. See lib/pageScroll.js.
@@ -24,14 +26,21 @@ import { getPageScroller, getScrollTop, offsetWithinScroller } from './pageScrol
 // Upward travel before the block returns: enough to absorb the jitter of a
 // finger resting on a momentum scroll, short enough to still feel immediate.
 const REVEAL_THRESHOLD = 8;
-// Covers fastScrollTo's longest run (300ms) plus a frame or two of slack.
-const COLLAPSE_HOLD_MS = 400;
+// The pin is held for as long as the caller's scroll is actually running and
+// released by hand, rather than expiring on a timer — a hidden tab freezes the
+// requestAnimationFrame the scroll is driven by while the clock keeps running,
+// which would drop the pin before the page had moved at all.
+// Past this much travel in a single frame the page was moved, not scrolled —
+// a restored position, or a jump-to-letter that landed in one step. Neither is
+// a gesture, so neither should drive the hide/reveal logic.
+const JUMP_DELTA = 400;
 
 const px = (value) => parseFloat(value) || 0;
 
 export function useScrollBackHeader() {
   const ref = useRef(null);
-  const collapseRef = useRef(null);
+  const pinOpenRef = useRef(null);
+  const releasePinRef = useRef(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -42,7 +51,7 @@ export function useScrollBackHeader() {
     let sliding = false; // a transition is in flight, so the drawn value leads `shift`
     let lastY = Math.max(0, getScrollTop(scroller));
     let upTravel = 0; // upward scroll accumulated since the last reversal
-    let holdUntil = 0;
+    let pinned = false; // a jump-to-letter is running; hold the block open
     let frame = 0;
     let height = el.offsetHeight;
     let flowTop = 0;
@@ -87,10 +96,21 @@ export function useScrollBackHeader() {
       // of the page it must not run ahead of the content it sits above.
       const gone = Math.min(Math.max(y - flowTop, 0), height);
 
-      if (performance.now() < holdUntil) {
-        // A programmatic jump is running: stay out of its way and let it land.
+      if (pinned) {
+        // A jump-to-letter is running with the block pinned open. Hold it fully
+        // on screen for the length of the scroll whichever way the page is
+        // moving — a downward jump would otherwise hide it, an upward one would
+        // ease it back in — so the section lands in the space the caller
+        // measured rather than under a block that is still moving.
         upTravel = 0;
-        setShift(gone, true);
+        setShift(0, false);
+      } else if (Math.abs(delta) > JUMP_DELTA) {
+        // The page was moved rather than scrolled — a restored position. Put
+        // the block exactly where the content has left it, untransitioned: a
+        // gesture-speed reveal here would slide it in over a page the reader
+        // has not actually scrolled.
+        upTravel = 0;
+        setShift(gone, false);
       } else if (delta > 0) {
         upTravel = 0;
         setShift(Math.min(drawnShift() + delta, gone), false);
@@ -113,9 +133,24 @@ export function useScrollBackHeader() {
       onScroll();
     }
 
-    collapseRef.current = () => {
-      holdUntil = performance.now() + COLLAPSE_HOLD_MS;
-      onScroll();
+    pinOpenRef.current = () => {
+      pinned = true;
+      // Open it in this tick rather than waiting for the first scroll frame, so
+      // the height returned is the space the block will actually be occupying
+      // by the time the caller's scroll lands.
+      height = el.offsetHeight;
+      upTravel = 0;
+      setShift(0, false);
+      return height;
+    };
+
+    releasePinRef.current = () => {
+      pinned = false;
+      // The jump's whole travel is behind us. Take it as the new baseline so
+      // the next real scroll measures a gesture-sized delta from where the page
+      // actually is, rather than reading the jump itself as one.
+      lastY = Math.max(0, getScrollTop(scroller));
+      upTravel = 0;
     };
 
     measureFlowTop();
@@ -129,7 +164,8 @@ export function useScrollBackHeader() {
     window.addEventListener('resize', onResize);
 
     return () => {
-      collapseRef.current = null;
+      pinOpenRef.current = null;
+      releasePinRef.current = null;
       cancelAnimationFrame(frame);
       observer.disconnect();
       scroller.removeEventListener('scroll', onScroll);
@@ -137,7 +173,10 @@ export function useScrollBackHeader() {
     };
   }, []);
 
-  const collapse = useCallback(() => collapseRef.current?.(), []);
+  // Returns the height the block now occupies at the top of the scroller, or 0
+  // if it is not mounted yet.
+  const pinOpen = useCallback(() => pinOpenRef.current?.() ?? 0, []);
+  const releasePin = useCallback(() => releasePinRef.current?.(), []);
 
-  return { ref, collapse };
+  return { ref, pinOpen, releasePin };
 }

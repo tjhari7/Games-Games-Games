@@ -20,7 +20,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
-const TABLE_ORDER = ['game_types', 'games']; // parents before the children that reference them
+const TABLE_ORDER = ['game_types', 'games', 'game_favorites', 'game_played', 'game_ratings']; // parents before the children that reference them
+
+// Every table's primary key column, used only for the dry-run added/removed
+// preview below — the delete+insert restore itself works off full rows
+// regardless of key name, so this is the one place a non-"id" key matters.
+const PRIMARY_KEY = {
+  game_types: 'id',
+  games: 'id',
+  game_favorites: 'game_id',
+  game_played: 'game_id',
+  game_ratings: 'game_id',
+};
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -68,9 +79,10 @@ if (totalSnapshotRows === 0) {
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 for (const table of TABLE_ORDER) {
-  const { rows: currentRows } = await pool.query(`select id from "${table}"`);
-  const currentIds = new Set(currentRows.map((r) => r.id));
-  const snapshotIds = new Set(snapshots[table].map((r) => r.id));
+  const key = PRIMARY_KEY[table];
+  const { rows: currentRows } = await pool.query(`select "${key}" from "${table}"`);
+  const currentIds = new Set(currentRows.map((r) => r[key]));
+  const snapshotIds = new Set(snapshots[table].map((r) => r[key]));
   const toAdd = [...snapshotIds].filter((id) => !currentIds.has(id)).length;
   const toRemove = [...currentIds].filter((id) => !snapshotIds.has(id)).length;
   console.log(`${table}: currently ${currentRows.length} rows -> restoring to ${snapshots[table].length} rows (+${toAdd} new, -${toRemove} removed)`);

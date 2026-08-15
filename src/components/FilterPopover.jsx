@@ -92,7 +92,10 @@ export default function FilterPopover({
               <select
                 id="filter-players"
                 value={playersFilter || ''}
-                onChange={(e) => setPlayersFilter(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setPlayersFilter(v ? (v === '8+' ? '8+' : Number(v)) : null);
+                }}
               >
                 <option value="">Any</option>
                 {PLAYER_OPTIONS.map((n) => (
@@ -122,14 +125,13 @@ export default function FilterPopover({
             </div>
           )}
 
-          <div className="filter-popover-actions">
-            <button className="btn btn-ghost btn-sm" onClick={clearAll}>
-              Clear All
-            </button>
-            <button className="btn btn-neutral btn-sm" onClick={() => setOpen(false)}>
-              Apply
-            </button>
-          </div>
+          {activeCount > 0 && (
+            <div className="filter-popover-actions">
+              <button className="btn btn-ghost btn-sm" onClick={clearAll}>
+                Clear All
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

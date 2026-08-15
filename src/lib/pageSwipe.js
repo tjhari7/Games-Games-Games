@@ -53,10 +53,10 @@ const END = {
   },
   // Below Home (Surprise Me, Game Types): arrives from below, leaves downward.
   // It can also hand off sideways to a game type page, which sits on the
-  // horizontal strip — that page's own back then returns to Home rather than
-  // here, since Home is the only thing at the far end of that strip.
+  // horizontal strip — and that page's own back returns here, entering from
+  // the right as the mirror of the trip out.
   opened: {
-    entrances: { swipeForward: 'below' },
+    entrances: { swipeForward: 'below', swipeBackFromRight: 'right' },
     exits: {
       vertical: { leave: 'down', handOff: { swipeBack: true } },
       horizontal: { leave: 'right', handOff: { swipeForwardFromLeft: true } },
@@ -191,10 +191,21 @@ export function useSwipeToHome() {
 /**
  * The far end of the horizontal strip, for a page that sits to Home's left: it
  * comes in from the left on arrival, and `startBack()` sends it back off to the
+ * left. `to` names where that lands — Home by default, but a page opened from
+ * somewhere else on the strip (a game type page, opened from the Game Types
+ * sheet rather than Home) can point back there instead.
+ */
+export function useHorizontalSwipeBack(to = '/') {
+  const { start, ...swipe } = usePageSwipe('openedLeft');
+  const startBack = useCallback(() => start(to, 'horizontal'), [start, to]);
+  return { ...swipe, startBack };
+}
+
+/**
+ * The far end of the horizontal strip, for a page that sits to Home's left: it
+ * comes in from the left on arrival, and `startBack()` sends it back off to the
  * left before returning Home.
  */
 export function useHorizontalSwipeToHome() {
-  const { start, ...swipe } = usePageSwipe('openedLeft');
-  const startBack = useCallback(() => start('/', 'horizontal'), [start]);
-  return { ...swipe, startBack };
+  return useHorizontalSwipeBack('/');
 }

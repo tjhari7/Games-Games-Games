@@ -182,6 +182,25 @@ async function main() {
       example text,
       created_at timestamptz not null default now()
     );
+
+    -- Per-game user state (favorited/played/rated). Kept in three tables
+    -- mirroring the three client hooks they replaced, rather than one
+    -- combined table, and kept out of the seed loops below since none of
+    -- them have default content. See server/migrate.js for the standalone
+    -- script that provisions just these against a database that already has
+    -- games seeded, without re-running the game_types upsert below.
+    create table if not exists game_favorites (
+      game_id uuid primary key references games(id) on delete cascade
+    );
+
+    create table if not exists game_played (
+      game_id uuid primary key references games(id) on delete cascade
+    );
+
+    create table if not exists game_ratings (
+      game_id uuid primary key references games(id) on delete cascade,
+      rating numeric(2,1) not null
+    );
   `);
 
   for (const t of GAME_TYPES) {

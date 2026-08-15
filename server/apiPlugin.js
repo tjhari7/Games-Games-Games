@@ -26,6 +26,18 @@ function readBody(req) {
 // whether a given player count fits within it.
 function playersMatch(playersText, target) {
   if (!playersText) return false;
+  // "8+" means "supports a group of 8 or more" — match games whose range
+  // reaches 8 or beyond, rather than requiring an exact player count.
+  if (target === '8+') {
+    const text = playersText.trim();
+    const plusMatch = text.match(/^(\d+)\s*\+/);
+    if (plusMatch) return true;
+    const rangeMatch = text.match(/(\d+)\s*(?:-|to)\s*(\d+)/);
+    if (rangeMatch) return Number(rangeMatch[2]) >= 8;
+    const singleMatch = text.match(/^(\d+)$/);
+    if (singleMatch) return Number(singleMatch[1]) >= 8;
+    return false;
+  }
   const text = playersText.trim();
   const plusMatch = text.match(/^(\d+)\s*\+/);
   if (plusMatch) return target >= Number(plusMatch[1]);
@@ -53,14 +65,23 @@ function parseTimeRangeMinutes(timeText) {
   return null;
 }
 
+const TIME_BUCKET_RANGES = {
+  '5min': [0, 7],
+  '10min': [8, 12],
+  '15min': [13, 20],
+  '30plus': [21, Infinity],
+};
+
+// Matches on the game's minimum stated time only, so a game only shows up
+// under one bucket rather than every bucket its range could reach into.
 function timeMatchesBucket(timeText, bucket) {
   const range = parseTimeRangeMinutes(timeText);
   if (!range) return false;
-  const [lo, hi] = range;
-  if (bucket === 'under10') return lo < 10;
-  if (bucket === '10to30') return lo <= 30 && hi >= 10;
-  if (bucket === 'over30') return hi > 30 || hi === Infinity;
-  return true;
+  const [lo] = range;
+  const bucketRange = TIME_BUCKET_RANGES[bucket];
+  if (!bucketRange) return true;
+  const [bucketLo, bucketHi] = bucketRange;
+  return lo >= bucketLo && lo <= bucketHi;
 }
 
 async function getUnassignedTypeId() {
@@ -171,7 +192,7 @@ const routes = [
         values
       );
 
-      const players = query.get('players') ? Number(query.get('players')) : null;
+      const players = query.get('players') ? (query.get('players') === '8+' ? '8+' : Number(query.get('players'))) : null;
       const timeBucket = query.get('time_bucket');
 
       let filtered = rows;
@@ -208,7 +229,7 @@ const routes = [
         values
       );
 
-      const players = query.get('players') ? Number(query.get('players')) : null;
+      const players = query.get('players') ? (query.get('players') === '8+' ? '8+' : Number(query.get('players'))) : null;
       const timeBucket = query.get('time_bucket');
 
       let pool_ = rows;
@@ -270,6 +291,90 @@ const routes = [
     handler: async (req, res, [id]) => {
       const { rows } = await pool.query('delete from games where id = $1 returning id', [id]);
       if (!rows[0]) return sendJson(res, 404, { error: 'Not found' });
+      sendJson(res, 200, { ok: true });
+    },
+  },
+
+  // Per-game user state: favorited, played, and rated. No accounts in this
+  // app, so these are single shared lists rather than scoped to a user — same
+  // as games and game_types. Each table cascades off games(id).
+  {
+    method: 'GET',
+    pattern: /^\/api\/favorites$/,
+    handler: async (req, res) => {
+      const { rows } = await pool.query('select game_id from game_favorites');
+      sendJson(res, 200, rows.map((r) => r.game_id));
+    },
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/api\/favorites\/([^/]+)$/,
+    handler: async (req, res, [gameId]) => {
+      await pool.query('insert into game_favorites (game_id) values ($1) on conflict (game_id) do nothing', [gameId]);
+      sendJson(res, 200, { ok: true });
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/favorites\/([^/]+)$/,
+    handler: async (req, res, [gameId]) => {
+      await pool.query('delete from game_favorites where game_id = $1', [gameId]);
+      sendJson(res, 200, { ok: true });
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/played$/,
+    handler: async (req, res) => {
+      const { rows } = await pool.query('select game_id from game_played');
+      sendJson(res, 200, rows.map((r) => r.game_id));
+    },
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/api\/played\/([^/]+)$/,
+    handler: async (req, res, [gameId]) => {
+      await pool.query('insert into game_played (game_id) values ($1) on conflict (game_id) do nothing', [gameId]);
+      sendJson(res, 200, { ok: true });
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/played\/([^/]+)$/,
+    handler: async (req, res, [gameId]) => {
+      await pool.query('delete from game_played where game_id = $1', [gameId]);
+      sendJson(res, 200, { ok: true });
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/ratings$/,
+    handler: async (req, res) => {
+      const { rows } = await pool.query('select game_id, rating from game_ratings');
+      sendJson(res, 200, Object.fromEntries(rows.map((r) => [r.game_id, Number(r.rating)])));
+    },
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/api\/ratings\/([^/]+)$/,
+    handler: async (req, res, [gameId]) => {
+      const { rating } = await readBody(req);
+      if (typeof rating !== 'number' || rating < 0.5 || rating > 5) {
+        return sendJson(res, 400, { error: 'rating must be a number between 0.5 and 5' });
+      }
+      await pool.query(
+        `insert into game_ratings (game_id, rating) values ($1, $2)
+         on conflict (game_id) do update set rating = excluded.rating`,
+        [gameId, rating]
+      );
+      sendJson(res, 200, { ok: true });
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/ratings\/([^/]+)$/,
+    handler: async (req, res, [gameId]) => {
+      await pool.query('delete from game_ratings where game_id = $1', [gameId]);
       sendJson(res, 200, { ok: true });
     },
   },

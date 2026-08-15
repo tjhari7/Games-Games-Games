@@ -12,9 +12,16 @@ import { offsetWithinScroller } from '../lib/pageScroll.js';
 import { useScrollRestoration } from '../lib/useScrollRestoration.js';
 import { useScrollBackHeader } from '../lib/useScrollBackHeader.js';
 import { useHorizontalSwipeToHome } from '../lib/pageSwipe.js';
+import { useFavoriteGames } from '../lib/useFavoriteGames.js';
+import { useGameRatings } from '../lib/useGameRatings.js';
+import StarRating from '../components/StarRating.jsx';
 
 const SpeechRecognition =
   typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+
+// Breathing room between the bottom of the pinned header and the letter
+// heading a jump lands on.
+const JUMP_GAP = 16;
 
 export default function AllGames() {
   const navigate = useNavigate();
@@ -23,7 +30,9 @@ export default function AllGames() {
   const { startBack, swipeClass, rootProps } = useHorizontalSwipeToHome();
   // Header, search and filter ride in one block that scrolls away downward and
   // comes back on any upward scroll. See lib/useScrollBackHeader.js.
-  const { ref: headerRef, collapse: collapseHeader } = useScrollBackHeader();
+  const { ref: headerRef, pinOpen: pinHeaderOpen, releasePin: releaseHeaderPin } = useScrollBackHeader();
+  const { isFavorite } = useFavoriteGames();
+  const { getRating } = useGameRatings();
   const [types, setTypes] = useState([]);
   const [games, setGames] = useState([]);
   const [search, setSearch] = useState('');
@@ -62,15 +71,20 @@ export default function AllGames() {
     setTimeFilter(null);
   }
 
+  // While a filter is active, reflect the filtered result count; otherwise
+  // show the unfiltered total (fetched once, unaffected by search-driven loading).
+  const displayCount = activeFilterChips.length > 0 ? games.length : totalCount;
+
   useScrollRestoration(!loading);
 
   function jumpToLetter(letter) {
     const el = sectionRefs.current[letter];
     if (!el) return;
-    // Send the chrome away first: a jump to an earlier letter scrolls upward,
-    // which would otherwise bring it back over the section it just landed on.
-    collapseHeader();
-    fastScrollTo(offsetWithinScroller(el), 16);
+    // Hold the chrome open for the length of the jump and land the section in
+    // the gap below it. Scrolling the heading to the top of the scroller
+    // instead would park it under the block, which stays on screen throughout.
+    const headerSpace = pinHeaderOpen();
+    fastScrollTo(offsetWithinScroller(el), headerSpace + JUMP_GAP, releaseHeaderPin);
   }
 
   function toggleVoiceSearch() {
@@ -148,7 +162,7 @@ export default function AllGames() {
             <span className="material-symbols-outlined">search</span>
             <input
               type="text"
-              placeholder={totalCount != null ? `Search all ${totalCount} games…` : 'Search games…'}
+              placeholder={displayCount != null ? `Search ${displayCount} games…` : 'Search games…'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -213,7 +227,7 @@ export default function AllGames() {
         <p className="state-message">No games found.</p>
       ) : (
         <>
-          <div className="game-list">
+          <div className="game-list game-list--indexed">
             {letterGroups.map((group) => (
               <div key={group.letter} className="game-list-group">
                 <div
@@ -225,22 +239,33 @@ export default function AllGames() {
                   {group.letter}
                 </div>
                 {group.items.map((g) => (
-                  <div className="game-list-item" key={g.id}>
+                  <div className="game-list-item" key={g.id} onClick={() => navigate(`/games/${g.id}`)}>
                     <div className="game-list-item-header">
-                      <span
-                        className="type-tag game-list-item-type"
-                        style={{ color: TYPE_TEXT_COLOR, background: typePillColor(g.type_name, g.type_bg) }}
-                      >
-                        {g.type_name}
-                      </span>
+                      <div className="game-list-item-header-left">
+                        <span
+                          className="type-tag game-list-item-type"
+                          style={{ color: TYPE_TEXT_COLOR, background: typePillColor(g.type_name, g.type_bg) }}
+                        >
+                          {g.type_name}
+                        </span>
+                        {isFavorite(g.id) && (
+                          <span
+                            className="material-symbols-outlined game-list-item-fav-icon"
+                            style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
+                          >
+                            favorite
+                          </span>
+                        )}
+                      </div>
                       <div className="game-list-item-actions">
-                        <button className="icon-btn" onClick={() => navigate(`/games/${g.id}`)} aria-label="View">
+                        <span className="icon-btn" aria-hidden="true">
                           <span className="material-symbols-outlined">chevron_right</span>
-                        </button>
+                        </span>
                       </div>
                     </div>
-                    <div className="game-list-item-main" onClick={() => navigate(`/games/${g.id}`)}>
+                    <div className="game-list-item-main">
                       <div className="game-list-item-title">{g.title}</div>
+                      <StarRating value={getRating(g.id)} size={16} className="star-rating--muted" />
                       {g.description && <p className="game-list-item-description">{g.description}</p>}
                       <div className="game-list-item-meta">
                         {g.players && (
@@ -269,6 +294,7 @@ export default function AllGames() {
 
       <button className="fab" onClick={() => navigate('/games/new')} aria-label="Add Game">
         <span className="material-symbols-outlined">add</span>
+        ADD
       </button>
     </div>
   );

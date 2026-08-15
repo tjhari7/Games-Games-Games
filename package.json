@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "start": "node server.js",
     "seed": "node server/seed.js",
+    "migrate": "node server/migrate.js",
     "backup": "node scripts/backup.js",
     "restore": "node scripts/restore.js"
   },
@@ -18,10 +19,12 @@
     "cors": "^2.8.6",
     "dotenv": "^16.4.7",
     "express": "^4.22.2",
+    "motion": "^13.1.0",
     "pg": "^8.13.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^6.28.0",
+    "serverless-http": "^4.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

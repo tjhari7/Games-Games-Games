@@ -22,6 +22,9 @@ const TYPE_PILL_COLORS = {
   endure: '#F2E3A2',
   rank: '#B5D9A8',
   persona: '#E0A9F0',
+  // Not a real game type — the shortcut tile on the Game Types sheet. Reuses
+  // the palette's red, the same hue the heart icon reads as elsewhere.
+  favorites: '#E89A9A',
 };
 
 // Black text sits on the bright pill/button backgrounds.

@@ -50,4 +50,20 @@ export const api = {
   createGame: (body) => request('/api/games', { method: 'POST', body: JSON.stringify(body) }),
   updateGame: (id, body) => request(`/api/games/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteGame: (id) => request(`/api/games/${id}`, { method: 'DELETE' }),
+
+  // Per-game user state — favorited/played/rated. Single shared lists (no
+  // accounts in this app), persisted server-side so they survive a dev server
+  // restart on a different port or a browser data wipe, unlike the
+  // localStorage they used to live in.
+  getFavorites: () => request('/api/favorites'),
+  putFavorite: (gameId) => request(`/api/favorites/${gameId}`, { method: 'PUT' }),
+  deleteFavorite: (gameId) => request(`/api/favorites/${gameId}`, { method: 'DELETE' }),
+
+  getPlayed: () => request('/api/played'),
+  putPlayed: (gameId) => request(`/api/played/${gameId}`, { method: 'PUT' }),
+  deletePlayed: (gameId) => request(`/api/played/${gameId}`, { method: 'DELETE' }),
+
+  getRatings: () => request('/api/ratings'),
+  putRating: (gameId, rating) => request(`/api/ratings/${gameId}`, { method: 'PUT', body: JSON.stringify({ rating }) }),
+  deleteRating: (gameId) => request(`/api/ratings/${gameId}`, { method: 'DELETE' }),
 };

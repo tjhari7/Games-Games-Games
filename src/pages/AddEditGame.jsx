@@ -134,13 +134,18 @@ export default function AddEditGame() {
 
         <div className="field">
           <label htmlFor="type_id">Game Type *</label>
-          <select id="type_id" value={form.type_id} onChange={(e) => update('type_id', e.target.value)} required>
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
+          <div className="select-wrap">
+            <select id="type_id" value={form.type_id} onChange={(e) => update('type_id', e.target.value)} required>
+              {types.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            <span className="select-chevron" aria-hidden="true">
+              <span className="material-symbols-outlined">expand_more</span>
+            </span>
+          </div>
         </div>
 
         <div className="field">
