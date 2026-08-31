@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
-import FilterPopover from '../components/FilterPopover.jsx';
+import FilterDrawer from '../components/FilterDrawer.jsx';
 import GameCardCarousel from '../components/GameCardCarousel.jsx';
 import ViewModeToggle from '../components/ViewModeToggle.jsx';
 import { api } from '../lib/api.js';
 import { typePillColor, TYPE_TEXT_COLOR } from '../lib/typeColors.js';
-import { TIME_OPTIONS } from '../lib/filterOptions.js';
+import { useDebounced, SEARCH_DEBOUNCE_MS } from '../lib/useDebounced.js';
+import { useLoaderGate } from '../lib/useLoaderGate.js';
+import GamesLoader from '../components/GamesLoader.jsx';
+import { TYPE_ICONS } from '../lib/gameTypes.js';
+import { playersChipLabel, timeChipLabel } from '../lib/filterOptions.js';
 import { groupByLetter } from '../lib/alphabetIndex.js';
 import { scrollPageTo } from '../lib/pageScroll.js';
 import { useScrollRestoration } from '../lib/useScrollRestoration.js';
 import { useScrollBackHeader } from '../lib/useScrollBackHeader.js';
-import { useHorizontalSwipeToHome } from '../lib/pageSwipe.js';
+import { useHorizontalSwipeBack } from '../lib/pageSwipe.js';
 import { CARD_VIEW, useGameViewMode } from '../lib/useGameViewMode.js';
 import { useFavoriteGames } from '../lib/useFavoriteGames.js';
 import { useGameRatings } from '../lib/useGameRatings.js';
@@ -22,9 +26,15 @@ const SpeechRecognition =
 
 export default function FavoriteGames() {
   const navigate = useNavigate();
+  const location = useLocation();
   // Sits to Home's left, same as the menu: in from the left, back off to the
-  // left. See lib/pageSwipe.js.
-  const { startBack, swipeClass, rootProps } = useHorizontalSwipeToHome();
+  // left. Favorites can be opened from two places, though — the heart on Home,
+  // or the Favorites tile in the Game Types sheet — so back returns to whichever
+  // one sent us here (the sheet stamps `backTo` into the history state; Home
+  // leaves it unset). Frozen at mount, before the swipe hook clears the state.
+  // See lib/pageSwipe.js.
+  const [backTo] = useState(() => location.state?.backTo || '/');
+  const { startBack, swipeClass, rootProps } = useHorizontalSwipeBack(backTo);
   // Header, search and filter ride in one block that scrolls away downward and
   // comes back on any upward scroll. See lib/useScrollBackHeader.js.
   const { ref: headerRef } = useScrollBackHeader();
@@ -34,18 +44,28 @@ export default function FavoriteGames() {
   const [types, setTypes] = useState([]);
   // null until loaded, so the search placeholder below doesn't flash "0"
   // before the real count is known.
-  const [allGames, setAllGames] = useState(null);
-  const [games, setGames] = useState([]);
+  // Seeded from the cache Home warms, so Favorites renders on the first frame.
+  const [allGames, setAllGames] = useState(() => api.getCachedGames());
+  const [games, setGames] = useState(() => api.getCachedGames() || []);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState(null);
-  const [playersFilter, setPlayersFilter] = useState(null);
-  const [timeFilter, setTimeFilter] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState([]);
+  const [playersFilter, setPlayersFilter] = useState([]);
+  const [timeFilter, setTimeFilter] = useState([]);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [loading, setLoading] = useState(() => api.getCachedGames() === null);
   const [error, setError] = useState(null);
   const [listening, setListening] = useState(false);
+  const debouncedSearch = useDebounced(search, SEARCH_DEBOUNCE_MS);
+  const { showLoader, contentReady } = useLoaderGate(loading);
   const recognitionRef = useRef(null);
 
   const cardView = viewMode === CARD_VIEW;
+
+  // Favorites wears the same colored hero banner as the type pages. It isn't a
+  // real game type, but it has an entry in typeColors.js and matching wordmark
+  // artwork, so it can carry the treatment unchanged.
+  const heroBg = typePillColor('Favorites');
+  const heroLogo = TYPE_ICONS.Favorites;
 
   // Favorite membership lives in localStorage, not the API, so narrowing to
   // favorites is always the last, client-side step after the server has
@@ -58,28 +78,45 @@ export default function FavoriteGames() {
     () => (allGames ? allGames.filter((g) => isFavorite(g.id)).length : null),
     [allGames, isFavorite],
   );
-  const hasActiveQuery = !!search.trim() || !!typeFilter || !!playersFilter || !!timeFilter;
+  const hasActiveQuery =
+    !!search.trim() || typeFilter.length > 0 || playersFilter.length > 0 || timeFilter.length > 0;
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
-    if (typeFilter) {
-      const typeName = types.find((t) => t.id === typeFilter)?.name;
-      if (typeName) chips.push({ key: 'type', label: typeName, onRemove: () => setTypeFilter(null) });
-    }
-    if (playersFilter) {
-      chips.push({ key: 'players', label: `${playersFilter} Players`, onRemove: () => setPlayersFilter(null) });
-    }
-    if (timeFilter) {
-      const timeLabel = TIME_OPTIONS.find((o) => o.value === timeFilter)?.label;
-      if (timeLabel) chips.push({ key: 'time', label: timeLabel, onRemove: () => setTimeFilter(null) });
-    }
+    typeFilter.forEach((id) => {
+      const typeName = types.find((t) => t.id === id)?.name;
+      if (typeName) {
+        chips.push({
+          key: `type-${id}`,
+          label: typeName,
+          onRemove: () => setTypeFilter((prev) => prev.filter((t) => t !== id)),
+        });
+      }
+    });
+    playersFilter.forEach((val) => {
+      chips.push({
+        key: `players-${val}`,
+        label: playersChipLabel(val),
+        onRemove: () => setPlayersFilter((prev) => prev.filter((v) => v !== val)),
+      });
+    });
+    timeFilter.forEach((val) => {
+      const timeLabel = timeChipLabel(val);
+      if (timeLabel) {
+        chips.push({
+          key: `time-${val}`,
+          label: timeLabel,
+          onRemove: () => setTimeFilter((prev) => prev.filter((v) => v !== val)),
+        });
+      }
+    });
     return chips;
   }, [typeFilter, playersFilter, timeFilter, types]);
 
   function clearAllFilters() {
-    setTypeFilter(null);
-    setPlayersFilter(null);
-    setTimeFilter(null);
+    setTypeFilter([]);
+    setPlayersFilter([]);
+    setTimeFilter([]);
   }
 
   useScrollRestoration(!loading && !cardView);
@@ -118,22 +155,38 @@ export default function FavoriteGames() {
 
   useEffect(() => {
     api.getGameTypes().then(setTypes).catch((err) => setError(err.message));
-    api.getGames().then(setAllGames).catch((err) => setError(err.message));
+    // No games fetch here on purpose. Filters are always empty on mount, so the
+    // effect below runs unfiltered and sets allGames from that same response —
+    // fetching the 65KB list here as well just doubled every visit.
   }, []);
+
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     const params = {};
-    if (search.trim()) params.search = search.trim();
-    if (typeFilter) params.type_id = typeFilter;
-    if (playersFilter) params.players = playersFilter;
-    if (timeFilter) params.time_bucket = timeFilter;
+    if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+    if (typeFilter.length) params.type_id = typeFilter.join(',');
+    if (playersFilter.length) params.players = playersFilter.join(',');
+    if (timeFilter.length) params.time_bucket = timeFilter.join(',');
+    const unfiltered = Object.keys(params).length === 0;
+
+    // Derived from the cache rather than a one-shot ref so StrictMode's second
+    // pass in dev doesn't put the loader back over a list already on screen.
+    const cachedAll = unfiltered ? api.getCachedGames() : null;
+    if (cachedAll) {
+      setGames(cachedAll);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
 
     api
       .getGames(params)
       .then((data) => {
-        if (!cancelled) setGames(data);
+        if (cancelled) return;
+        setGames(data);
+        // The unfiltered response is also the full list the count is drawn from.
+        if (unfiltered) setAllGames(data);
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);
@@ -145,17 +198,25 @@ export default function FavoriteGames() {
     return () => {
       cancelled = true;
     };
-  }, [search, typeFilter, playersFilter, timeFilter]);
+  }, [debouncedSearch, typeFilter.join(','), playersFilter.join(','), timeFilter.join(',')]);
 
   return (
-    <div className={`page${swipeClass}`} {...rootProps}>
-      <div className="scroll-back-header" ref={headerRef}>
+    <div className={`page category-hero-page${swipeClass}`} {...rootProps}>
+      <div
+        className={`scroll-back-header category-hero-header${cardView ? ' category-hero-header-card' : ''}`}
+        ref={headerRef}
+        style={{ background: heroBg }}
+      >
         <PageHeader
-          title="Favorite Games"
+          title="Favorites"
           centered
-          tight
           onBack={startBack}
           actions={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
+          titleSlot={
+            heroLogo ? (
+              <img src={heroLogo} alt="Favorites" className="category-hero-logo" data-type="Favorites" />
+            ) : null
+          }
         />
 
         {error && <div className="error-message">{error}</div>}
@@ -195,30 +256,51 @@ export default function FavoriteGames() {
               )}
             </div>
 
-            <FilterPopover
-              types={types}
-              typeFilter={typeFilter}
-              setTypeFilter={setTypeFilter}
-              playersFilter={playersFilter}
-              setPlayersFilter={setPlayersFilter}
-              timeFilter={timeFilter}
-              setTimeFilter={setTimeFilter}
-              fields={['type', 'players', 'time']}
-              iconOnly
-            />
+            <div className="filter-popover-wrapper icon-only">
+              <button
+                className="btn filter-toggle-btn-icon"
+                onClick={() => setFilterOpen(true)}
+                aria-label="Filter"
+              >
+                <span className="material-symbols-outlined">tune</span>
+                {activeFilterChips.length > 0 && (
+                  <span className="filter-badge">{activeFilterChips.length}</span>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>
 
+      <FilterDrawer
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        types={types}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
+        playersFilter={playersFilter}
+        setPlayersFilter={setPlayersFilter}
+        timeFilter={timeFilter}
+        setTimeFilter={setTimeFilter}
+        resultCount={favoriteGames.length}
+        onClearAll={clearAllFilters}
+      />
+
       {!cardView && activeFilterChips.length > 0 && (
         <div className="filter-chip-row">
           {activeFilterChips.map((chip) => (
-            <span className="filter-chip" key={chip.key}>
+            <button
+              className="filter-chip"
+              key={chip.key}
+              onClick={chip.onRemove}
+              aria-label={`Remove ${chip.label} filter`}
+              type="button"
+            >
               {chip.label}
-              <button onClick={chip.onRemove} aria-label={`Remove ${chip.label} filter`} type="button">
+              <span className="filter-chip__x" aria-hidden="true">
                 <span className="material-symbols-outlined">close</span>
-              </button>
-            </span>
+              </span>
+            </button>
           ))}
           {activeFilterChips.length >= 2 && (
             <button className="filter-clear-all" onClick={clearAllFilters} type="button">
@@ -228,73 +310,84 @@ export default function FavoriteGames() {
         </div>
       )}
 
-      {loading ? (
-        <p className="state-message">Loading…</p>
-      ) : favoriteGames.length === 0 ? (
-        <p className="state-message">
-          {hasActiveQuery ? 'No games found.' : 'No favorite games yet. Tap the heart on a game to add it here.'}
-        </p>
-      ) : cardView ? (
-        <GameCardCarousel
-          games={favoriteGames}
-          onOpen={(g) => navigate(`/games/${g.id}`)}
-          onEdit={(g) => navigate(`/games/${g.id}`)}
-        />
-      ) : (
-        <div className="game-list">
-          {letterGroups.map((group) => (
-            <div key={group.letter} className="game-list-group">
-              <div className="game-list-letter-heading">{group.letter}</div>
-              {group.items.map((g) => (
-                <div className="game-list-item" key={g.id} onClick={() => navigate(`/games/${g.id}`)}>
-                  <div className="game-list-item-header">
-                    <div className="game-list-item-header-left">
-                      <span
-                        className="type-tag game-list-item-type"
-                        style={{ color: TYPE_TEXT_COLOR, background: typePillColor(g.type_name, g.type_bg) }}
-                      >
-                        {g.type_name}
-                      </span>
-                      {isFavorite(g.id) && (
+      {/* Outside .page-content on purpose: that wrapper is what the page-entrance
+          animation slides, and an animated ancestor becomes the containing block
+          for the loader's `position: fixed`, dragging it along. As a direct
+          child of .page it resolves to the device frame and never moves. */}
+      {/* Favorites' own pink, the same one its hero banner wears. */}
+      {showLoader && <GamesLoader color={heroBg || undefined} />}
+
+      <div className="page-content">
+        {cardView && (
+          <div className="category-hero-count">{totalCount != null ? `${totalCount} Games` : 'Games'}</div>
+        )}
+
+        {!contentReady ? null : favoriteGames.length === 0 ? (
+          <p className="state-message">
+            {hasActiveQuery ? 'No games found.' : 'No favorite games yet. Tap the heart on a game to add it here.'}
+          </p>
+        ) : cardView ? (
+          <GameCardCarousel
+            games={favoriteGames}
+            onOpen={(g) => navigate(`/games/${g.id}`)}
+            onEdit={(g) => navigate(`/games/${g.id}`)}
+          />
+        ) : (
+          <div className="game-list">
+            {letterGroups.map((group) => (
+              <div key={group.letter} className="game-list-group">
+                <div className="game-list-letter-heading">{group.letter}</div>
+                {group.items.map((g) => (
+                  <div className="game-list-item" key={g.id} onClick={() => navigate(`/games/${g.id}`)}>
+                    <div className="game-list-item-header">
+                      <div className="game-list-item-header-left">
                         <span
-                          className="material-symbols-outlined game-list-item-fav-icon"
-                          style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
+                          className="type-tag game-list-item-type"
+                          style={{ color: TYPE_TEXT_COLOR, background: typePillColor(g.type_name, g.type_bg) }}
                         >
-                          favorite
+                          {g.type_name}
                         </span>
-                      )}
+                        {isFavorite(g.id) && (
+                          <span
+                            className="material-symbols-outlined game-list-item-fav-icon"
+                            style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
+                          >
+                            favorite
+                          </span>
+                        )}
+                      </div>
+                      <div className="game-list-item-actions">
+                        <span className="icon-btn" aria-hidden="true">
+                          <span className="material-symbols-outlined">chevron_right</span>
+                        </span>
+                      </div>
                     </div>
-                    <div className="game-list-item-actions">
-                      <span className="icon-btn" aria-hidden="true">
-                        <span className="material-symbols-outlined">chevron_right</span>
-                      </span>
+                    <div className="game-list-item-main">
+                      <div className="game-list-item-title">{g.title}</div>
+                      <StarRating value={getRating(g.id)} size={16} className="star-rating--muted" />
+                      {g.description && <p className="game-list-item-description">{g.description}</p>}
+                      <div className="game-list-item-meta">
+                        {g.players && (
+                          <span className="meta-item">
+                            <span className="material-symbols-outlined">group</span>
+                            {g.players}
+                          </span>
+                        )}
+                        {g.time && (
+                          <span className="meta-item">
+                            <span className="material-symbols-outlined">schedule</span>
+                            {g.time}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="game-list-item-main">
-                    <div className="game-list-item-title">{g.title}</div>
-                    <StarRating value={getRating(g.id)} size={16} className="star-rating--muted" />
-                    {g.description && <p className="game-list-item-description">{g.description}</p>}
-                    <div className="game-list-item-meta">
-                      {g.players && (
-                        <span className="meta-item">
-                          <span className="material-symbols-outlined">group</span>
-                          {g.players}
-                        </span>
-                      )}
-                      {g.time && (
-                        <span className="meta-item">
-                          <span className="material-symbols-outlined">schedule</span>
-                          {g.time}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

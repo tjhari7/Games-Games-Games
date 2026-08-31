@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-// Home sits on two strips. Surprise Me sits *below* it on a vertical one:
-// opening it pans down — Home slides off the top while the destination rises
-// from the bottom — and closing pans back. The menu (All Games) and the six
-// game type pages sit to the *left* on a horizontal one: opening one pans
-// right — Home slides off to the right while the page comes in from the left —
-// and closing sends that page back off to the left as Home returns from the
-// right.
+// Home sits on two strips. The Game Types sheet sits *below* it on a vertical
+// one: opening it pans down — Home slides off the top while the destination
+// rises from the bottom — and closing pans back. The menu (All Games), Surprise
+// Me and the six game type pages sit to the *left* on a horizontal one: opening
+// one pans right — Home slides off to the right while the page comes in from the
+// left — and closing sends that page back off to the left as Home returns from
+// the right.
 //
 // Either way the two halves run in sequence — the outgoing page finishes its
 // slide, then the route changes and the incoming one slides in — so only ever
@@ -51,7 +51,7 @@ const END = {
       horizontal: { leave: 'right', handOff: { swipeForwardFromLeft: true } },
     },
   },
-  // Below Home (Surprise Me, Game Types): arrives from below, leaves downward.
+  // Below Home (the Game Types sheet): arrives from below, leaves downward.
   // It can also hand off sideways to a game type page, which sits on the
   // horizontal strip — and that page's own back returns here, entering from
   // the right as the mirror of the trip out.
@@ -62,8 +62,8 @@ const END = {
       horizontal: { leave: 'right', handOff: { swipeForwardFromLeft: true } },
     },
   },
-  // Left of Home (the menu and the game type pages): arrives from the left,
-  // leaves back off to the left.
+  // Left of Home (the menu, Surprise Me and the game type pages): arrives from
+  // the left, leaves back off to the left.
   openedLeft: {
     entrances: { swipeForwardFromLeft: 'left' },
     exits: { horizontal: { leave: 'left', handOff: { swipeBackFromRight: true } } },
@@ -121,11 +121,15 @@ function usePageSwipe(end) {
   }, [navigate]);
 
   const start = useCallback(
-    (to, axis = 'vertical') => {
+    (to, axis = 'vertical', extraState = null) => {
       if (leaveSide) return;
       const exit = exits[axis];
       targetRef.current = to;
-      handOffRef.current = exit.handOff;
+      // `extraState` rides along in the history state next to the swipe flag, so
+      // a destination that can be reached from more than one place (Favorites,
+      // opened from either Home or the Game Types sheet) can be told which back
+      // target to use.
+      handOffRef.current = extraState ? { ...exit.handOff, ...extraState } : exit.handOff;
       if (prefersReducedMotion()) {
         navigate(to, { state: exit.handOff });
         return;

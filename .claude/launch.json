@@ -35,6 +35,19 @@
       "port": 3001
     },
     {
+      "name": "food-fight-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/tjhari/Documents/Claude Code/Projects/Meal Randomizer",
+        "run",
+        "dev",
+        "--",
+        "--host"
+      ],
+      "port": 5174
+    },
+    {
       "name": "games-db-verify-server-2",
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],

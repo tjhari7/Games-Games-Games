@@ -1,20 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
-import FilterPopover from '../components/FilterPopover.jsx';
+import FilterDrawer from '../components/FilterDrawer.jsx';
 import AlphabetIndex from '../components/AlphabetIndex.jsx';
 import { api } from '../lib/api.js';
 import { typePillColor, TYPE_TEXT_COLOR } from '../lib/typeColors.js';
-import { TIME_OPTIONS } from '../lib/filterOptions.js';
+import { playersChipLabel, timeChipLabel } from '../lib/filterOptions.js';
 import { groupByLetter } from '../lib/alphabetIndex.js';
 import { fastScrollTo } from '../lib/smoothScroll.js';
 import { offsetWithinScroller } from '../lib/pageScroll.js';
 import { useScrollRestoration } from '../lib/useScrollRestoration.js';
 import { useScrollBackHeader } from '../lib/useScrollBackHeader.js';
 import { useHorizontalSwipeToHome } from '../lib/pageSwipe.js';
+import { useLoaderGate } from '../lib/useLoaderGate.js';
+import { useDebounced, SEARCH_DEBOUNCE_MS } from '../lib/useDebounced.js';
 import { useFavoriteGames } from '../lib/useFavoriteGames.js';
 import { useGameRatings } from '../lib/useGameRatings.js';
 import StarRating from '../components/StarRating.jsx';
+import GamesLoader from '../components/GamesLoader.jsx';
+import addIcon from '../assets/Add_Icon.svg';
 
 const SpeechRecognition =
   typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -33,16 +37,28 @@ export default function AllGames() {
   const { ref: headerRef, pinOpen: pinHeaderOpen, releasePin: releaseHeaderPin } = useScrollBackHeader();
   const { isFavorite } = useFavoriteGames();
   const { getRating } = useGameRatings();
-  const [types, setTypes] = useState([]);
-  const [games, setGames] = useState([]);
+  // Seeded from the module-level caches in api.js, which Home warms in the
+  // background (HomeContent). A repeat visit renders its list on the first
+  // frame instead of blocking on a fetch, so the loader never appears for data
+  // already in memory. Same pattern as GameTypes and RandomGame.
+  const [types, setTypes] = useState(() => api.getCachedGameTypes() || []);
+  const [games, setGames] = useState(() => api.getCachedGames() || []);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState(null);
-  const [playersFilter, setPlayersFilter] = useState(null);
-  const [timeFilter, setTimeFilter] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState([]);
+  const [playersFilter, setPlayersFilter] = useState([]);
+  const [timeFilter, setTimeFilter] = useState([]);
+  const [filterOpen, setFilterOpen] = useState(false);
+  // Only a cold start blocks. Filters are always empty on mount, so the cached
+  // unfiltered list is exactly what this first render wants.
+  const [loading, setLoading] = useState(() => api.getCachedGames() === null);
   const [error, setError] = useState(null);
   const [listening, setListening] = useState(false);
-  const [totalCount, setTotalCount] = useState(null);
+  // The spinner is skipped entirely on fast fetches and always finishes its
+  // rotation on slow ones. See lib/useLoaderGate.js.
+  const { showLoader, contentReady } = useLoaderGate(loading);
+  const [totalCount, setTotalCount] = useState(() => api.getCachedGames()?.length ?? null);
+  // Search is debounced; filters and view changes stay immediate.
+  const debouncedSearch = useDebounced(search, SEARCH_DEBOUNCE_MS);
   const sectionRefs = useRef({});
   const recognitionRef = useRef(null);
 
@@ -51,31 +67,47 @@ export default function AllGames() {
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
-    if (typeFilter) {
-      const typeName = types.find((t) => t.id === typeFilter)?.name;
-      if (typeName) chips.push({ key: 'type', label: typeName, onRemove: () => setTypeFilter(null) });
-    }
-    if (playersFilter) {
-      chips.push({ key: 'players', label: `${playersFilter} Players`, onRemove: () => setPlayersFilter(null) });
-    }
-    if (timeFilter) {
-      const timeLabel = TIME_OPTIONS.find((o) => o.value === timeFilter)?.label;
-      if (timeLabel) chips.push({ key: 'time', label: timeLabel, onRemove: () => setTimeFilter(null) });
-    }
+    typeFilter.forEach((id) => {
+      const typeName = types.find((t) => t.id === id)?.name;
+      if (typeName) {
+        chips.push({
+          key: `type-${id}`,
+          label: typeName,
+          onRemove: () => setTypeFilter((prev) => prev.filter((t) => t !== id)),
+        });
+      }
+    });
+    playersFilter.forEach((val) => {
+      chips.push({
+        key: `players-${val}`,
+        label: playersChipLabel(val),
+        onRemove: () => setPlayersFilter((prev) => prev.filter((v) => v !== val)),
+      });
+    });
+    timeFilter.forEach((val) => {
+      const timeLabel = timeChipLabel(val);
+      if (timeLabel) {
+        chips.push({
+          key: `time-${val}`,
+          label: timeLabel,
+          onRemove: () => setTimeFilter((prev) => prev.filter((v) => v !== val)),
+        });
+      }
+    });
     return chips;
   }, [typeFilter, playersFilter, timeFilter, types]);
 
   function clearAllFilters() {
-    setTypeFilter(null);
-    setPlayersFilter(null);
-    setTimeFilter(null);
+    setTypeFilter([]);
+    setPlayersFilter([]);
+    setTimeFilter([]);
   }
 
   // While a filter is active, reflect the filtered result count; otherwise
   // show the unfiltered total (fetched once, unaffected by search-driven loading).
   const displayCount = activeFilterChips.length > 0 ? games.length : totalCount;
 
-  useScrollRestoration(!loading);
+  useScrollRestoration(contentReady);
 
   function jumpToLetter(letter) {
     const el = sectionRefs.current[letter];
@@ -109,25 +141,41 @@ export default function AllGames() {
 
   useEffect(() => {
     api.getGameTypes().then(setTypes).catch((err) => setError(err.message));
-    api
-      .getGames()
-      .then((data) => setTotalCount(data.length))
-      .catch((err) => setError(err.message));
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     const params = {};
-    if (search.trim()) params.search = search.trim();
-    if (typeFilter) params.type_id = typeFilter;
-    if (playersFilter) params.players = playersFilter;
-    if (timeFilter) params.time_bucket = timeFilter;
+    if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+    if (typeFilter.length) params.type_id = typeFilter.join(',');
+    if (playersFilter.length) params.players = playersFilter.join(',');
+    if (timeFilter.length) params.time_bucket = timeFilter.join(',');
+    const unfiltered = Object.keys(params).length === 0;
+
+    // Any unfiltered query is already answered by the cache Home warmed, so
+    // paint it immediately and let the request refresh it underneath. Only a
+    // cold start or a filtered query has nothing to show and needs the loader.
+    //
+    // Deliberately derived from the cache rather than a one-shot ref: StrictMode
+    // runs this effect twice in dev, and a ref would be spent on the first pass,
+    // putting the loader back on the second.
+    const cachedAll = unfiltered ? api.getCachedGames() : null;
+    if (cachedAll) {
+      setGames(cachedAll);
+      setTotalCount(cachedAll.length);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
 
     api
       .getGames(params)
       .then((data) => {
-        if (!cancelled) setGames(data);
+        if (cancelled) return;
+        setGames(data);
+        // The unfiltered response *is* the total, so there's no second
+        // full-list request just to count it.
+        if (unfiltered) setTotalCount(data.length);
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);
@@ -139,7 +187,7 @@ export default function AllGames() {
     return () => {
       cancelled = true;
     };
-  }, [search, typeFilter, playersFilter, timeFilter]);
+  }, [debouncedSearch, typeFilter.join(','), playersFilter.join(','), timeFilter.join(',')]);
 
   return (
     <div className={`page${swipeClass}`} {...rootProps}>
@@ -149,7 +197,7 @@ export default function AllGames() {
           centered
           onBack={startBack}
           actions={
-            <button className="icon-btn" onClick={() => navigate('/types')} aria-label="Edit Game Types">
+            <button className="icon-btn overflow-menu-btn" onClick={() => navigate('/types')} aria-label="Edit Game Types">
               <span className="material-symbols-outlined">more_vert</span>
             </button>
           }
@@ -189,29 +237,50 @@ export default function AllGames() {
             )}
           </div>
 
-          <FilterPopover
-            types={types}
-            typeFilter={typeFilter}
-            setTypeFilter={setTypeFilter}
-            playersFilter={playersFilter}
-            setPlayersFilter={setPlayersFilter}
-            timeFilter={timeFilter}
-            setTimeFilter={setTimeFilter}
-            fields={['type', 'players', 'time']}
-            iconOnly
-          />
+          <div className="filter-popover-wrapper icon-only">
+            <button
+              className="btn filter-toggle-btn-icon"
+              onClick={() => setFilterOpen(true)}
+              aria-label="Filter"
+            >
+              <span className="material-symbols-outlined">tune</span>
+              {activeFilterChips.length > 0 && (
+                <span className="filter-badge">{activeFilterChips.length}</span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
+
+      <FilterDrawer
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        types={types}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
+        playersFilter={playersFilter}
+        setPlayersFilter={setPlayersFilter}
+        timeFilter={timeFilter}
+        setTimeFilter={setTimeFilter}
+        resultCount={displayCount ?? games.length}
+        onClearAll={clearAllFilters}
+      />
 
       {activeFilterChips.length > 0 && (
         <div className="filter-chip-row">
           {activeFilterChips.map((chip) => (
-            <span className="filter-chip" key={chip.key}>
+            <button
+              className="filter-chip"
+              key={chip.key}
+              onClick={chip.onRemove}
+              aria-label={`Remove ${chip.label} filter`}
+              type="button"
+            >
               {chip.label}
-              <button onClick={chip.onRemove} aria-label={`Remove ${chip.label} filter`} type="button">
+              <span className="filter-chip__x" aria-hidden="true">
                 <span className="material-symbols-outlined">close</span>
-              </button>
-            </span>
+              </span>
+            </button>
           ))}
           {activeFilterChips.length >= 2 && (
             <button className="filter-clear-all" onClick={clearAllFilters} type="button">
@@ -221,12 +290,17 @@ export default function AllGames() {
         </div>
       )}
 
-      {loading ? (
-        <p className="state-message">Loading…</p>
-      ) : games.length === 0 ? (
-        <p className="state-message">No games found.</p>
-      ) : (
-        <>
+      {/* Outside .page-content on purpose: that wrapper is what the page-entrance
+          animation slides, and an animated ancestor becomes the containing block
+          for the loader's `position: fixed`, dragging it along and then dropping
+          it when the class comes off. As a direct child of .page it resolves to
+          the device frame and never moves. */}
+      {showLoader && <GamesLoader />}
+
+      <div className="page-content">
+        {!contentReady ? null : games.length === 0 ? (
+          <p className="state-message">No games found.</p>
+        ) : (
           <div className="game-list game-list--indexed">
             {letterGroups.map((group) => (
               <div key={group.letter} className="game-list-group">
@@ -287,13 +361,19 @@ export default function AllGames() {
               </div>
             ))}
           </div>
+        )}
+      </div>
 
-          <AlphabetIndex presentLetters={presentLetters} onSelect={jumpToLetter} />
-        </>
+      {/* The A-Z rail is `position: fixed`, so it stays out of .page-content:
+          that wrapper carries a `translate` during the page entrance, which
+          would make it the rail's containing block for those 300ms and shift
+          the rail off the frame edge and back. */}
+      {contentReady && games.length > 0 && (
+        <AlphabetIndex presentLetters={presentLetters} onSelect={jumpToLetter} />
       )}
 
       <button className="fab" onClick={() => navigate('/games/new')} aria-label="Add Game">
-        <span className="material-symbols-outlined">add</span>
+        <img src={addIcon} alt="" className="fab-add-icon" />
         ADD
       </button>
     </div>

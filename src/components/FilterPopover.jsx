@@ -3,11 +3,11 @@ import { PLAYER_OPTIONS, TIME_OPTIONS } from '../lib/filterOptions.js';
 
 export default function FilterPopover({
   types,
-  typeFilter,
-  setTypeFilter,
-  playersFilter = null,
+  typeFilter = [],
+  setTypeFilter = () => {},
+  playersFilter = [],
   setPlayersFilter = () => {},
-  timeFilter = null,
+  timeFilter = [],
   setTimeFilter = () => {},
   fields = ['type', 'players', 'time'],
   fullWidth = false,
@@ -31,17 +31,25 @@ export default function FilterPopover({
     };
   }, []);
 
-  const activeValues = [
-    fields.includes('type') && typeFilter,
-    fields.includes('players') && playersFilter,
-    fields.includes('time') && timeFilter,
-  ];
-  const activeCount = activeValues.filter(Boolean).length;
+  const typeCount = fields.includes('type') ? typeFilter.length : 0;
+  const activeCount =
+    typeCount +
+    (fields.includes('players') ? playersFilter.length : 0) +
+    (fields.includes('time') ? timeFilter.length : 0);
+
+  // Every group here is multi-select: a tap adds or removes the value, and a
+  // game matches if it fits any one of the chosen values.
+  const toggleIn = (list, value) =>
+    list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+
+  function toggleType(id) {
+    setTypeFilter(toggleIn(typeFilter, id));
+  }
 
   function clearAll() {
-    if (fields.includes('type')) setTypeFilter(null);
-    if (fields.includes('players')) setPlayersFilter(null);
-    if (fields.includes('time')) setTimeFilter(null);
+    if (fields.includes('type')) setTypeFilter([]);
+    if (fields.includes('players')) setPlayersFilter([]);
+    if (fields.includes('time')) setTimeFilter([]);
   }
 
   return (
@@ -70,58 +78,58 @@ export default function FilterPopover({
         <div className="filter-popover">
           {fields.includes('type') && (
             <div className="filter-popover-field">
-              <label htmlFor="filter-type">Game Type</label>
-              <select
-                id="filter-type"
-                value={typeFilter || ''}
-                onChange={(e) => setTypeFilter(e.target.value || null)}
-              >
-                <option value="">All Types</option>
+              <label>Game Type</label>
+              <div className="filter-checkbox-list" role="group" aria-label="Game Type">
                 {types.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
+                  <label className="filter-checkbox" key={t.id}>
+                    <input
+                      type="checkbox"
+                      checked={typeFilter.includes(t.id)}
+                      onChange={() => toggleType(t.id)}
+                    />
+                    <span>{t.name}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
           )}
 
           {fields.includes('players') && (
             <div className="filter-popover-field">
-              <label htmlFor="filter-players">Players</label>
-              <select
-                id="filter-players"
-                value={playersFilter || ''}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setPlayersFilter(v ? (v === '8+' ? '8+' : Number(v)) : null);
-                }}
-              >
-                <option value="">Any</option>
-                {PLAYER_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
+              <label>Players</label>
+              <div className="filter-checkbox-list" role="group" aria-label="Players">
+                {PLAYER_OPTIONS.map((n) => {
+                  const val = n === '8+' ? '8+' : n;
+                  return (
+                    <label className="filter-checkbox" key={n}>
+                      <input
+                        type="checkbox"
+                        checked={playersFilter.includes(val)}
+                        onChange={() => setPlayersFilter(toggleIn(playersFilter, val))}
+                      />
+                      <span>{n}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           )}
 
           {fields.includes('time') && (
             <div className="filter-popover-field">
-              <label htmlFor="filter-time">Time</label>
-              <select
-                id="filter-time"
-                value={timeFilter || ''}
-                onChange={(e) => setTimeFilter(e.target.value || null)}
-              >
-                <option value="">Any</option>
+              <label>Time</label>
+              <div className="filter-checkbox-list" role="group" aria-label="Time">
                 {TIME_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
+                  <label className="filter-checkbox" key={opt.value}>
+                    <input
+                      type="checkbox"
+                      checked={timeFilter.includes(opt.value)}
+                      onChange={() => setTimeFilter(toggleIn(timeFilter, opt.value))}
+                    />
+                    <span>{opt.label}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
           )}
 

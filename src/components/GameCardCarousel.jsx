@@ -3,6 +3,7 @@ import { typePillColor, TYPE_TEXT_COLOR } from '../lib/typeColors.js';
 import { useFavoriteGames } from '../lib/useFavoriteGames.js';
 import { useMarkedPlayed } from '../lib/useMarkedPlayed.js';
 import { useGameRatings } from '../lib/useGameRatings.js';
+import { shareGame } from '../lib/shareGame.js';
 import StarRating from './StarRating.jsx';
 import StarRatingPicker from './StarRatingPicker.jsx';
 
@@ -101,7 +102,16 @@ function CarouselCard({ game, rating, favorite, onOpen, onEdit }) {
   );
 }
 
-export default function GameCardCarousel({ games, onOpen, onEdit }) {
+// `controls`, when passed, is a ref the carousel hangs its imperative moves off
+// — currently just `next()`, so a button outside the track (the draw page's
+// shuffle) can advance it with the same snap a swipe gets.
+//
+// `loading` renders the whole shell — one blank card and a full, inert actions
+// bar — before any games are in hand. It exists so the bar can mount on the
+// first frame alongside the page header and ride the same entrance, instead of
+// popping in whenever the API answers (which, against a ~300ms page slide, lands
+// noticeably late). When the games arrive the shell fills in with no remount.
+export default function GameCardCarousel({ games, onOpen, onEdit, controls, loading = false }) {
   const { isFavorite, toggleFavorite } = useFavoriteGames();
   const { isPlayed, togglePlayed } = useMarkedPlayed();
   const { getRating, setRating } = useGameRatings();
@@ -223,6 +233,22 @@ export default function GameCardCarousel({ games, onOpen, onEdit }) {
     return () => observer.disconnect();
   }, [scrollToSlide]);
 
+  useEffect(() => {
+    if (!controls) return undefined;
+    controls.current = {
+      next: () => {
+        const last = slides.length - 1;
+        const i = slideIndexRef.current + 1;
+        // Past the end without wrapping there is nowhere to go; with wrapping
+        // the trailing clone is a valid stop, and settling teleports off it.
+        scrollToSlide(i > last ? (wraps ? last : 0) : i, 'smooth');
+      },
+    };
+    return () => {
+      controls.current = null;
+    };
+  }, [controls, scrollToSlide, slides.length, wraps]);
+
   useEffect(() => () => clearTimeout(settleTimer.current), []);
 
   /* ---- mouse drag ------------------------------------------------------ */
@@ -286,6 +312,12 @@ export default function GameCardCarousel({ games, onOpen, onEdit }) {
 
   /* ---------------------------------------------------------------------- */
 
+  // No games yet (only a cold visit — Home usually warms the cache first): the
+  // track stays empty and the bar below renders in full but inert, so it still
+  // mounts on the first frame and rides the page's entrance with the header.
+  // No stand-in card — the empty track keeps its height on its own.
+  const showShell = loading && games.length === 0;
+
   return (
     <div className="card-carousel">
       <div
@@ -326,57 +358,68 @@ export default function GameCardCarousel({ games, onOpen, onEdit }) {
       </div>
 
       <div className="card-carousel__counter">
-        {gameIndex + 1} of {games.length}
+        {showShell ? ' ' : `${gameIndex + 1} of ${games.length}`}
       </div>
 
-      {ratingMode && currentGame ? (
-        <StarRatingPicker
-          value={getRating(currentGame.id)}
-          onChange={(value) => setRating(currentGame.id, value)}
-          onBack={() => setRatingMode(false)}
-        />
-      ) : (
-        <div className="card-carousel__actions">
-          <button
-            type="button"
-            className={`card-carousel__action card-carousel__action--played${currentGame && isPlayed(currentGame.id) ? ' is-active' : ''}`}
-            aria-pressed={!!currentGame && isPlayed(currentGame.id)}
-            onClick={() => currentGame && togglePlayed(currentGame.id)}
-            aria-label="Mark as played"
-          >
-            <span className="material-symbols-outlined">casino</span>
-            <span className="card-carousel__action-label">Played</span>
-          </button>
-          <button
-            type="button"
-            className={`card-carousel__action card-carousel__action--favorite${currentGame && isFavorite(currentGame.id) ? ' is-active' : ''}`}
-            aria-pressed={!!currentGame && isFavorite(currentGame.id)}
-            onClick={() => currentGame && toggleFavorite(currentGame.id)}
-            aria-label="Favorite"
-          >
-            <span className="material-symbols-outlined">favorite</span>
-            <span className="card-carousel__action-label">Favorite</span>
-          </button>
-          <button
-            type="button"
-            className={`card-carousel__action card-carousel__action--rating${currentGame && getRating(currentGame.id) > 0 ? ' is-active' : ''}`}
-            onClick={() => currentGame && setRatingMode(true)}
-            aria-label="Rating"
-          >
-            <span className="material-symbols-outlined">star</span>
-            <span className="card-carousel__action-text">
-              <span className="card-carousel__action-label">Rating</span>
-              {currentGame && getRating(currentGame.id) > 0 && (
-                <span className="card-carousel__action-sublabel">{getRating(currentGame.id).toFixed(1)}</span>
-              )}
-            </span>
-          </button>
-          <button type="button" className="card-carousel__action card-carousel__action--share" aria-label="Share">
-            <span className="material-symbols-outlined">ios_share</span>
-            <span className="card-carousel__action-label">Share</span>
-          </button>
-        </div>
-      )}
+      <div className="card-carousel__bar">
+        {ratingMode && currentGame ? (
+          <StarRatingPicker
+            value={getRating(currentGame.id)}
+            onChange={(value) => setRating(currentGame.id, value)}
+            onBack={() => setRatingMode(false)}
+          />
+        ) : (
+          <div className="card-carousel__actions">
+            <button
+              type="button"
+              className={`card-carousel__action card-carousel__action--played${currentGame && isPlayed(currentGame.id) ? ' is-active' : ''}`}
+              aria-pressed={!!currentGame && isPlayed(currentGame.id)}
+              onClick={() => currentGame && togglePlayed(currentGame.id)}
+              disabled={showShell}
+              aria-label="Mark as played"
+            >
+              <span className="material-symbols-outlined">casino</span>
+              <span className="card-carousel__action-label">Played</span>
+            </button>
+            <button
+              type="button"
+              className={`card-carousel__action card-carousel__action--favorite${currentGame && isFavorite(currentGame.id) ? ' is-active' : ''}`}
+              aria-pressed={!!currentGame && isFavorite(currentGame.id)}
+              onClick={() => currentGame && toggleFavorite(currentGame.id)}
+              disabled={showShell}
+              aria-label="Favorite"
+            >
+              <span className="material-symbols-outlined">favorite</span>
+              <span className="card-carousel__action-label">Favorite</span>
+            </button>
+            <button
+              type="button"
+              className={`card-carousel__action card-carousel__action--rating${currentGame && getRating(currentGame.id) > 0 ? ' is-active' : ''}`}
+              onClick={() => currentGame && setRatingMode(true)}
+              disabled={showShell}
+              aria-label="Rating"
+            >
+              <span className="material-symbols-outlined">star</span>
+              <span className="card-carousel__action-text">
+                <span className="card-carousel__action-label">Rating</span>
+                {currentGame && getRating(currentGame.id) > 0 && (
+                  <span className="card-carousel__action-sublabel">{getRating(currentGame.id).toFixed(1)}</span>
+                )}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="card-carousel__action card-carousel__action--share"
+              onClick={() => shareGame(currentGame)}
+              disabled={showShell}
+              aria-label="Share"
+            >
+              <span className="material-symbols-outlined">ios_share</span>
+              <span className="card-carousel__action-label">Share</span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

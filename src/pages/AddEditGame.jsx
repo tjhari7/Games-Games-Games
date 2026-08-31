@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useLoaderGate } from '../lib/useLoaderGate.js';
+import GamesLoader from '../components/GamesLoader.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import { api } from '../lib/api.js';
@@ -23,6 +25,7 @@ export default function AddEditGame() {
   const [types, setTypes] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
+  const { showLoader, contentReady } = useLoaderGate(loading);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -94,11 +97,11 @@ export default function AddEditGame() {
     }
   }
 
-  if (loading) {
+  if (!contentReady) {
     return (
       <div className="page">
         <PageHeader title={isEdit ? 'Edit Game' : 'Add Game'} backTo="history" />
-        <p className="state-message">Loading…</p>
+        {showLoader && <GamesLoader />}
       </div>
     );
   }

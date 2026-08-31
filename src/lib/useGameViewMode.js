@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 
 // How the game lists are drawn: a scrolling list, or one card at a time in a
 // swipeable carousel. One preference for the whole app — flipping Act Out to
-// cards means Talking opens in cards too.
+// cards means Drawing opens in cards too.
 export const LIST_VIEW = 'list';
 export const CARD_VIEW = 'cards';
 

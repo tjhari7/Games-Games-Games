@@ -45,7 +45,9 @@ export function useScrollBackHeader() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
-    const scroller = getPageScroller();
+    // Not captured for good: crossing the 601px breakpoint swaps the window for
+    // the device frame's inner scroller, so this is rebound in onResize.
+    let scroller = getPageScroller();
 
     let shift = 0; // px the block is currently pulled up by
     let sliding = false; // a transition is in flight, so the drawn value leads `shift`
@@ -127,8 +129,34 @@ export function useScrollBackHeader() {
       if (!frame) frame = requestAnimationFrame(update);
     }
 
+    // Put the block exactly where the content has left it, untransitioned, and
+    // take the current position as the new baseline. For moves that were not
+    // gestures, so nothing eases and the next real scroll measures a
+    // gesture-sized delta rather than reading the move itself as one.
+    function settle() {
+      lastY = Math.max(0, getScrollTop(scroller));
+      upTravel = 0;
+      setShift(Math.min(Math.max(lastY - flowTop, 0), height), false);
+    }
+
     function onResize() {
       height = el.offsetHeight;
+
+      // Crossing the breakpoint hands the scrolling over to a different
+      // element. A listener left on the old one goes deaf, which strands the
+      // block wherever it happened to be — off-screen, that is a blank strip of
+      // page where the header should be. Rebind, then settle against the new
+      // scroller's position, which is its own value and not the old one's.
+      const next = getPageScroller();
+      if (next !== scroller) {
+        scroller.removeEventListener('scroll', onScroll);
+        scroller = next;
+        scroller.addEventListener('scroll', onScroll, { passive: true });
+        measureFlowTop();
+        settle();
+        return;
+      }
+
       measureFlowTop();
       onScroll();
     }

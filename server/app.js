@@ -76,6 +76,20 @@ function timeMatchesBucket(timeText, bucket) {
   return lo >= bucketLo && lo <= bucketHi;
 }
 
+// The `players` and `time_bucket` query params are comma-separated lists (the
+// filter UI is multi-select). A game passes if it fits *any* one of the chosen
+// values — an OR within each group.
+function playersMatchesAny(playersText, param) {
+  if (!param) return true;
+  const targets = param.split(',').map((p) => (p === '8+' ? '8+' : Number(p)));
+  return targets.some((t) => playersMatch(playersText, t));
+}
+
+function timeMatchesAnyBucket(timeText, param) {
+  if (!param) return true;
+  return param.split(',').some((b) => timeMatchesBucket(timeText, b));
+}
+
 async function getUnassignedTypeId() {
   const { rows } = await pool.query('select id from game_types where name = $1', ['Unassigned']);
   return rows[0]?.id;
@@ -176,8 +190,13 @@ app.get('/api/games', async (req, res) => {
       conditions.push(`g.title ilike $${values.length}`);
     }
     if (req.query.type_id) {
-      values.push(req.query.type_id);
-      conditions.push(`g.type_id = $${values.length}`);
+      // Accepts one id or a comma-separated list, so All Games can filter on
+      // several game types at once.
+      const typeIds = String(req.query.type_id).split(',').filter(Boolean);
+      if (typeIds.length) {
+        values.push(typeIds);
+        conditions.push(`g.type_id::text = any($${values.length})`);
+      }
     }
 
     const where = conditions.length ? `where ${conditions.join(' and ')}` : '';
@@ -189,12 +208,12 @@ app.get('/api/games', async (req, res) => {
       values
     );
 
-    const players = req.query.players ? (req.query.players === '8+' ? '8+' : Number(req.query.players)) : null;
+    const players = req.query.players;
     const timeBucket = req.query.time_bucket;
 
     let filtered = rows;
-    if (players) filtered = filtered.filter((g) => playersMatch(g.players, players));
-    if (timeBucket) filtered = filtered.filter((g) => timeMatchesBucket(g.time, timeBucket));
+    if (players) filtered = filtered.filter((g) => playersMatchesAny(g.players, players));
+    if (timeBucket) filtered = filtered.filter((g) => timeMatchesAnyBucket(g.time, timeBucket));
 
     res.json(filtered);
   } catch (err) {
@@ -228,12 +247,12 @@ app.get('/api/games/random', async (req, res) => {
       values
     );
 
-    const players = req.query.players ? (req.query.players === '8+' ? '8+' : Number(req.query.players)) : null;
+    const players = req.query.players;
     const timeBucket = req.query.time_bucket;
 
     let pool_ = rows;
-    if (players) pool_ = pool_.filter((g) => playersMatch(g.players, players));
-    if (timeBucket) pool_ = pool_.filter((g) => timeMatchesBucket(g.time, timeBucket));
+    if (players) pool_ = pool_.filter((g) => playersMatchesAny(g.players, players));
+    if (timeBucket) pool_ = pool_.filter((g) => timeMatchesAnyBucket(g.time, timeBucket));
 
     if (pool_.length === 0) return res.json({ game: null, poolSize: 0 });
 

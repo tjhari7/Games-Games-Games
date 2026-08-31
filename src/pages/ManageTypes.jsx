@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useLoaderGate } from '../lib/useLoaderGate.js';
+import GamesLoader from '../components/GamesLoader.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import { api } from '../lib/api.js';
@@ -41,6 +43,7 @@ function TypeEditor({ initial, onSave, onCancel, saving }) {
 export default function ManageTypes() {
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { showLoader, contentReady } = useLoaderGate(loading);
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [adding, setAdding] = useState(false);
@@ -110,9 +113,9 @@ export default function ManageTypes() {
 
       {error && <div className="error-message">{error}</div>}
 
-      {loading ? (
-        <p className="state-message">Loading…</p>
-      ) : (
+      {showLoader && <GamesLoader />}
+
+      {!contentReady ? null : (
         <>
           <div className="type-list">
             {types.map((t) =>

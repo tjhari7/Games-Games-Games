@@ -250,14 +250,22 @@ export default function GameTypes() {
                     className="btn-tertiary"
                     style={{ background: typePillColor(t.name, t.bg), color: TYPE_TEXT_COLOR }}
                     onClick={() =>
-                      startForward(t.id === FAVORITES_TILE.id ? '/favorites' : `/games/type/${t.id}`, 'horizontal')
+                      t.id === FAVORITES_TILE.id
+                        ? startForward('/favorites', 'horizontal', { backTo: '/game-types' })
+                        : startForward(`/games/type/${t.id}`, 'horizontal')
                     }
                   >
                     {TYPE_ICONS[t.name] ? (
                       <img
                         src={TYPE_ICONS[t.name]}
                         alt={t.name}
-                        className={t.name === 'Taskmaster' ? 'home-type-icon home-type-icon-lg' : 'home-type-icon'}
+                        className={
+                          t.name === 'Sound' || t.name === 'Guessing'
+                            ? 'home-type-icon home-type-icon-taller'
+                            : t.name === 'Writing'
+                              ? 'home-type-icon home-type-icon-writing'
+                              : 'home-type-icon'
+                        }
                       />
                     ) : (
                       t.name

@@ -1,6 +1,7 @@
-import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion, useMotionValue, useSpring } from 'motion/react';
-import { ALL_TYPE_ORDER, TYPE_TOSS_ICONS } from '../lib/gameTypes.js';
+import { ALL_TYPE_ORDER, TYPE_TOSS_ICONS, TYPE_TOSS_SPIN, TOSS_SPIN_DEFAULT } from '../lib/gameTypes.js';
+import { api } from '../lib/api.js';
 import g1 from '../assets/G1.svg';
 import a1 from '../assets/A1.svg';
 import m1 from '../assets/M1.svg';
@@ -30,7 +31,12 @@ const NOOP = () => {};
 // reference file) - offsets/heights below are exact, not estimated. Rows
 // aren't uniform height, so each row tracks its own native height/top.
 const LOGO_NATIVE_WIDTH = 291;
-const LOGO_NATIVE_HEIGHT = 173;
+// 174, not the master's 173: the rows carry a 2-unit breather under row 1 (see
+// above LOGO_ROWS) that the master doesn't have, so the reconstruction stands
+// one unit taller than the file it was traced from. This is what .home-logo-wrap
+// is sized from, so it has to cover LOGO_TOTAL_HEIGHT or the wrapper understates
+// its contents and the subtitle creeps up under the last row.
+const LOGO_NATIVE_HEIGHT = 174;
 const LOGO_DISPLAY_WIDTH = 280;
 const LOGO_SCALE = LOGO_DISPLAY_WIDTH / LOGO_NATIVE_WIDTH;
 
@@ -110,16 +116,27 @@ if (import.meta.env.DEV) {
  * one; the pair swaps sides every group, and the spin direction follows the side.
  */
 function buildThrows(icons) {
+  const groupCount = Math.ceil(icons.length / TOSS_GROUP_SIZE);
+  // One coin-flip per group for which side the leader takes; the follower gets
+  // the other. Randomised here rather than derived from the slot (as it used to
+  // be) so that reshuffling the order actually moves icons across sides - the
+  // same icon lands left in one cycle and right in the next.
+  const leaderLeft = Array.from({ length: groupCount }, () => Math.random() < 0.5);
+
   return icons.map(({ name, src }, index) => {
     const groupIndex = Math.floor(index / TOSS_GROUP_SIZE);
     const iconIndex = index % TOSS_GROUP_SIZE;
-    const x = (groupIndex + iconIndex) % 2 === 0 ? -TOSS_SPREAD : TOSS_SPREAD;
+    const onLeft = iconIndex === 0 ? leaderLeft[groupIndex] : !leaderLeft[groupIndex];
+    const x = onLeft ? -TOSS_SPREAD : TOSS_SPREAD;
+    // Direction stays positional (which side it launched from); only the
+    // magnitude is per-type, so asymmetric art can be dialled toward upright.
+    const magnitude = TYPE_TOSS_SPIN[name] ?? TOSS_SPIN_DEFAULT;
 
     return {
       name,
       src,
       x,
-      spin: x < 0 ? 90 : -90,
+      spin: (x < 0 ? 1 : -1) * magnitude,
       drop: iconIndex === 0 ? 0 : TOSS_DROP,
       delay:
         TOSS_ENTER_DELAY_MS + groupIndex * TOSS_GROUP_MS + iconIndex * TOSS_STAGGER_MS,
@@ -139,12 +156,31 @@ function shuffle(items) {
   return out;
 }
 
+// A fresh permutation for the next cycle that never opens on the same icon it
+// just opened on - the most visible form of "it repeated". A full-permutation
+// match across sixteen items is astronomically unlikely (and further broken by
+// buildThrows' independent per-group side flips), so guarding the opener is
+// enough to keep consecutive cycles reading as distinct throws.
+function reshuffle(items, prevFirstName) {
+  const out = shuffle(items);
+  if (prevFirstName && out.length > 1 && out[0].name === prevFirstName) {
+    const j = 1 + Math.floor(Math.random() * (out.length - 1));
+    [out[0], out[j]] = [out[j], out[0]];
+  }
+  return out;
+}
+
 // Gap left between the subtitle's bottom edge and the icon *box* at its apex.
 // The one knob for how high the throw goes; every other number is measured at
 // runtime. Note the box is 100px but the die inside it only reaches 42.6px from
 // centre at 45deg, so 40 here reads as ~47px of clearance under the visible die
 // - tune against what you see, not against this number.
-const TOSS_CLEARANCE = 40;
+//
+// Split by viewport so the throw doesn't feel excessive on small screens; the
+// breakpoint matches the app's other desktop/mobile split at 600/601px (see
+// index.css).
+const TOSS_CLEARANCE_DESKTOP = 40;
+const TOSS_CLEARANCE_MOBILE = 24;
 
 // Landscape and very short viewports would otherwise compute a travel that's
 // tiny or negative, which reads as a twitch rather than a throw.
@@ -218,6 +254,15 @@ const LAYER_SPRINGS = {
   eCenter: { stiffness: 175, damping: 7.4 }, // zeta 0.28 - E2, slightly stiffer than E1/E3
 };
 
+// `top` is native-units-from-the-logo's-top. Rows 1 and 2 tiled edge-to-edge in
+// the master (row 1 is y 0-58, row 2 began at exactly 58); rows 2 and 3 sit two
+// units lower than the master puts them, opening a deliberate 2-unit breather
+// under row 1 while leaving the row 2 -> row 3 gap at the 4 units it always had.
+//
+// That makes LOGO_TOTAL_HEIGHT 174, which LOGO_NATIVE_HEIGHT is kept in step
+// with so .home-logo-wrap still measures its contents exactly - the logo's ink
+// keeps its original clearance to the subtitle instead of creeping into it.
+// Spread the rows further and both numbers need to move again, together.
 const LOGO_ROWS = [
   {
     top: 0,
@@ -232,7 +277,7 @@ const LOGO_ROWS = [
     ],
   },
   {
-    top: 58,
+    top: 60,
     height: 56,
     letters: [
       { key: 'G', src: g2, x: 0, width: 67, layer: 'outerCenter' },
@@ -248,9 +293,10 @@ const LOGO_ROWS = [
   // (#E4FFBB) and A-shape (#C0F2FF) landmark paths bundled into every one of
   // these 6 files, and the two landmarks agree exactly (58+21+70+50+74+18=291,
   // the full master width). `top` carries over the previous cross-correlation
-  // finding against the master's actual pixels (~y=118 native).
+  // finding against the master's actual pixels (~y=118 native), plus the 2-unit
+  // shift described above LOGO_ROWS.
   {
-    top: 118,
+    top: 120,
     height: 54,
     letters: [
       { key: 'G', src: g3, x: 0, width: 58, layer: 'outerEdge' },
@@ -344,8 +390,35 @@ export default function HomeContent({ onGo = NOOP }) {
   const subtitleRef = useRef(null);
   const actionsRef = useRef(null);
 
-  // Once per mount, so each visit to Home opens on a different pair.
-  const throws = useMemo(() => buildThrows(shuffle(TOSS_ICONS)), []);
+  // Re-rolled every animation cycle (not once per mount), so the order, the
+  // pairings and each icon's side all change from one cycle to the next instead
+  // of the CSS looping a single frozen arrangement forever.
+  const [cycle, setCycle] = useState(0);
+  const prevFirstRef = useRef(null);
+
+  const throws = useMemo(() => {
+    const order = reshuffle(TOSS_ICONS, prevFirstRef.current);
+    prevFirstRef.current = order[0]?.name ?? null;
+    return buildThrows(order);
+  }, [cycle]);
+
+  // Warm both caches while Home is on screen, so Play A Game — the button right
+  // below — has its deck in hand the moment it's pressed, and All Games / the
+  // type pages can render off the cache instead of fetching on arrival. Fire
+  // and forget; every page still fetches for itself if this hasn't landed yet.
+  useEffect(() => {
+    if (!api.getCachedGames()) api.getGames().catch(() => {});
+    if (!api.getCachedGameTypes()) api.getGameTypes().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    // Fire at each cycle boundary. Every icon has thrown and returned to its
+    // hidden rest pose by TOSS_CYCLE_MS, so remounting .home-toss (keyed on
+    // `cycle` below) restarts the CSS animations with the new arrangement
+    // during that rest tail - no in-flight icon to jump.
+    const id = setInterval(() => setCycle((c) => c + 1), TOSS_CYCLE_MS);
+    return () => clearInterval(id);
+  }, []);
 
   // How far the icon travels can't be a constant or a dvh calc. .home-actions is
   // position: fixed, so its top edge moves with viewport height - and on desktop
@@ -361,10 +434,11 @@ export default function HomeContent({ onGo = NOOP }) {
     const actions = actionsRef.current;
     if (!subtitle || !actions) return;
 
+    const clearance = window.innerWidth <= 600 ? TOSS_CLEARANCE_MOBILE : TOSS_CLEARANCE_DESKTOP;
     const travel = Math.max(
       actions.getBoundingClientRect().top -
         subtitle.getBoundingClientRect().bottom -
-        TOSS_CLEARANCE,
+        clearance,
       TOSS_MIN_TRAVEL,
     );
     actions.style.setProperty('--toss-travel', `${travel}px`);
@@ -399,7 +473,7 @@ export default function HomeContent({ onGo = NOOP }) {
       <div className="home">
         <div className="home-topbar home-topbar-left">
           <button className="icon-btn" onClick={() => onGo('/favorites', 'horizontal')} aria-label="View favorite games">
-            <span className="material-symbols-outlined">favorite</span>
+            <span className="material-symbols-outlined home-fav-icon">favorite</span>
           </button>
         </div>
         <div className="home-topbar">
@@ -431,7 +505,7 @@ export default function HomeContent({ onGo = NOOP }) {
             z-index auto, so DOM order alone paints the thrown icon behind them
             without a negative z-index that .home-actions' own stacking context
             would trap anyway. */}
-        <div className="home-toss" aria-hidden="true">
+        <div className="home-toss" aria-hidden="true" key={cycle}>
           {throws.map((icon) => (
             <img
               key={icon.name}
@@ -449,7 +523,7 @@ export default function HomeContent({ onGo = NOOP }) {
           ))}
         </div>
 
-        <button className="btn btn-neutral home-play-btn" onClick={() => onGo('/random')}>
+        <button className="btn btn-neutral home-play-btn" onClick={() => onGo('/random', 'horizontal')}>
           Play A Game
         </button>
 

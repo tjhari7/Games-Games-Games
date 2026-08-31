@@ -13,6 +13,13 @@ async function request(path, options) {
 // instead of flashing an empty grid while a fresh request resolves.
 let gameTypesCache = null;
 
+// The full, unfiltered games list backs Play A Game and All Games. It's the
+// app's biggest payload — a cold fetch runs ~half a second against Supabase —
+// so cache it in memory the same way, and let Home warm it on load so the draw
+// is ready before the button is even pressed. Only the no-params list is
+// cached; filtered/searched queries always go to the server.
+let gamesCache = null;
+
 export const api = {
   getGameTypes: async () => {
     const data = await request('/api/game-types');
@@ -38,18 +45,42 @@ export const api = {
     return data;
   },
 
-  getGames: (params = {}) => {
+  getGames: async (params = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return request(`/api/games${qs ? `?${qs}` : ''}`);
+    const data = await request(`/api/games${qs ? `?${qs}` : ''}`);
+    if (!qs) gamesCache = data;
+    return data;
   },
+  // Synchronous peek at the unfiltered games list (null until loaded once) so
+  // Play A Game can seed its deck and skip the loading state on repeat visits.
+  getCachedGames: () => gamesCache,
+  // The full list carries every game's type_id, so a type page can be answered
+  // straight from it — the same rows /api/games?type_id= would return, in the
+  // same title order — instead of waiting on a request of its own. Null (not
+  // an empty array) when the list hasn't been fetched yet, so callers can tell
+  // "no cache" from "this type has no games".
+  getCachedGamesByType: (typeId) =>
+    gamesCache ? gamesCache.filter((g) => g.type_id === typeId) : null,
   getGame: (id) => request(`/api/games/${id}`),
   drawRandomGame: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request(`/api/games/random${qs ? `?${qs}` : ''}`);
   },
-  createGame: (body) => request('/api/games', { method: 'POST', body: JSON.stringify(body) }),
-  updateGame: (id, body) => request(`/api/games/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
-  deleteGame: (id) => request(`/api/games/${id}`, { method: 'DELETE' }),
+  createGame: async (body) => {
+    const data = await request('/api/games', { method: 'POST', body: JSON.stringify(body) });
+    gamesCache = null;
+    return data;
+  },
+  updateGame: async (id, body) => {
+    const data = await request(`/api/games/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+    gamesCache = null;
+    return data;
+  },
+  deleteGame: async (id) => {
+    const data = await request(`/api/games/${id}`, { method: 'DELETE' });
+    gamesCache = null;
+    return data;
+  },
 
   // Per-game user state — favorited/played/rated. Single shared lists (no
   // accounts in this app), persisted server-side so they survive a dev server

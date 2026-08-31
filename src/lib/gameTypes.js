@@ -1,28 +1,39 @@
 import drawingIcon from '../assets/Drawing_01.svg';
 import actOutIcon from '../assets/Act_Out_01.svg';
 import cardIcon from '../assets/Card_01.svg';
+import wordIcon from '../assets/Word_01.svg';
+import challengeIcon from '../assets/Challenge_01.svg';
+import deductionIcon from '../assets/Deduction_01.svg';
+import drinkingIcon from '../assets/Drinking_01.svg';
+import favoritesIcon from '../assets/Favorites_01.svg';
+import guessingIcon from '../assets/Guessing_01.svg';
+import questionIcon from '../assets/Question_01.svg';
+import soundIcon from '../assets/Sound_01.svg';
+import votingIcon from '../assets/Voting_01.svg';
+import writingIcon from '../assets/Writing_01.svg';
+import teamIcon from '../assets/Team_01.svg';
 import improvIcon from '../assets/Improv_01.svg';
-import talkingIcon from '../assets/Talking_01.svg';
 import taskmasterIcon from '../assets/Task Master_01.svg';
 
-import tossActOut from '../assets/Games_Icon_Act_Out_01.svg';
-import tossImprov from '../assets/Games_Icon_Improv_01.svg';
-import tossDrawing from '../assets/Games_Icon_Drawing_01.svg';
-import tossCard from '../assets/Games_Icon_Card_01.svg';
-import tossTalking from '../assets/Games_Icon_Talking_01.svg';
-import tossTaskmaster from '../assets/Games_Icon_Taskmaster_01.svg';
-import tossGuess from '../assets/Games_Icon_Guess_01.svg';
-import tossWord from '../assets/Games_Icon_Word_01.svg';
-import tossDeduce from '../assets/Games_Icon_Deduce_01.svg';
-import tossWrite from '../assets/Games_Icon_Write_01.svg';
-import tossSound from '../assets/Games_Icon_Sound_01.svg';
-import tossVote from '../assets/Games_Icon_Vote_01.svg';
-import tossTeam from '../assets/Games_Icon_Team_01.svg';
-import tossSense from '../assets/Games_Icon_Sense_01.svg';
-import tossEndure from '../assets/Games_Icon_Endure_01.svg';
-import tossRank from '../assets/Games_Icon_Rank_01.svg';
-import tossPersona from '../assets/Games_Icon_Persona_01.svg';
-import tossFavorites from '../assets/Games_Icon_Favorites_01.svg';
+// Real per-type artwork, one file per type in src/assets/Icons/, each drawn into
+// a 100x100 box with the subject ~64 units across its dominant axis and centred,
+// so the toss arc and centre of rotation stay art-independent.
+import tossActOut from '../assets/Icons/Games_Icon_ActOut_01.svg';
+import tossImprov from '../assets/Icons/Games_Icon_Improv_01.svg';
+import tossDrawing from '../assets/Icons/Games_Icon_Drawing_01.svg';
+import tossCard from '../assets/Icons/Games_Icon_Card_01.svg';
+import tossQuestion from '../assets/Icons/Games_Icon_Question_01.svg';
+import tossTaskmaster from '../assets/Icons/Games_Icon_TaskMaster_01.svg';
+import tossGuess from '../assets/Icons/Games_Icon_Guessing_01.svg';
+import tossWord from '../assets/Icons/Games_Icon_Word_01.svg';
+import tossDeduction from '../assets/Icons/Games_Icon_Deduction_01.svg';
+import tossWrite from '../assets/Icons/Games_Icon_Writing_01.svg';
+import tossSound from '../assets/Icons/Games_Icon_Sound_01.svg';
+import tossVote from '../assets/Icons/Games_Icon_Voting_02.svg';
+import tossTeam from '../assets/Icons/Games_Icon_Team_01.svg';
+import tossChallenge from '../assets/Icons/Games_Icon_Challenge_01.svg';
+import tossDrinking from '../assets/Icons/Games_Icon_Drinking_01.svg';
+import tossFavorites from '../assets/Icons/Games_Icon_Favorites_01.svg';
 
 // The types the wordmark artwork was drawn for. Everything else falls through to
 // its name set as text, which is what the tiles render when there is no icon.
@@ -30,64 +41,104 @@ export const TYPE_ICONS = {
   Drawing: drawingIcon,
   'Act Out': actOutIcon,
   Card: cardIcon,
+  Word: wordIcon,
   Improv: improvIcon,
-  Talking: talkingIcon,
   Taskmaster: taskmasterIcon,
+  Challenge: challengeIcon,
+  Deduction: deductionIcon,
+  Drinking: drinkingIcon,
+  Favorites: favoritesIcon,
+  Guessing: guessingIcon,
+  Question: questionIcon,
+  Sound: soundIcon,
+  Voting: votingIcon,
+  Writing: writingIcon,
+  Team: teamIcon,
 };
 
 // The square artwork thrown up behind Home's Play A Game button — a separate set
 // from TYPE_ICONS above, which are the wide wordmarks the drawer tiles wear.
 //
-// Every entry is currently a placeholder: the die from Games_Icon_Dice_01.svg
-// recoloured to match that type's drawer tile, so the throw reads as the app's
-// palette until real per-type artwork exists. Replacing one is just overwriting
-// its file — nothing here or in HomeContent.jsx needs to change, and artwork can
-// be any shape or number of colours (a King Card for Card, say), because the
-// animation only ever positions and rotates a 100x100 box.
+// Every entry now carries real per-type artwork (src/assets/Icons/), drawn into a
+// 100x100 box with the subject ~64 units across its dominant axis and centred, so
+// the arc and centre of rotation stay art-independent. Replacing one is just
+// overwriting its file — nothing here or in HomeContent.jsx needs to change, and
+// artwork can be any shape or number of colours (a King Card for Card, say),
+// because the animation only ever positions and rotates a 100x100 box.
 //
-// The colour lives in the file, not in typeColors.js: recolouring a drawer tile
-// will not follow through to its icon, so the two are kept in step by hand while
-// these remain stand-ins.
+// The colour lives in the file, not in typeColors.js: recolouring a type in
+// typeColors.js will not follow through to its icon, so the two are kept in step
+// by hand.
 export const TYPE_TOSS_ICONS = {
   'Act Out': tossActOut,
   Improv: tossImprov,
   Drawing: tossDrawing,
   Card: tossCard,
-  Talking: tossTalking,
+  Question: tossQuestion,
   Taskmaster: tossTaskmaster,
-  Guess: tossGuess,
+  Guessing: tossGuess,
   Word: tossWord,
-  Deduce: tossDeduce,
-  Write: tossWrite,
+  Deduction: tossDeduction,
+  Writing: tossWrite,
   Sound: tossSound,
-  Vote: tossVote,
+  Voting: tossVote,
   Team: tossTeam,
-  Sense: tossSense,
-  Endure: tossEndure,
-  Rank: tossRank,
-  Persona: tossPersona,
+  Challenge: tossChallenge,
+  Drinking: tossDrinking,
   Favorites: tossFavorites,
 };
 
-// The six on Home's grid — the ones with artwork.
-export const HOME_TYPE_ORDER = ['Act Out', 'Improv', 'Drawing', 'Card', 'Talking', 'Taskmaster'];
+// The default toss spin magnitude, in degrees — the quarter-turn tumble the
+// symmetric dice wear. buildThrows (HomeContent.jsx) picks the sign by launch
+// side; this is only how far.
+export const TOSS_SPIN_DEFAULT = 45;
 
-// Everything, in the order the Game Types sheet lists it: the six from Home
-// first, then the rest. Pinned rather than alphabetical, which would interleave
-// the two groups.
+// Per-type override of that magnitude. Anything unlisted falls back to
+// TOSS_SPIN_DEFAULT. Dial an entry down toward 0 to land that icon closer to
+// upright — useful now that the real (asymmetric) artwork rests visibly, unlike
+// the four-fold-symmetric dice it replaced.
+export const TYPE_TOSS_SPIN = {
+  Card: 67,
+  Drawing: 35,
+  Challenge: 67,
+  Favorites: 67,
+  Taskmaster: 67,
+  'Act Out': 60,
+  Deduction: 45,
+  Drinking: 67,
+  Sound: 67,
+  Voting: 45,
+  Improv: 60,
+  Guessing: 67,
+  Question: 45,
+  Team: 35,
+  Word: 35,
+  Writing: 67,
+};
+
+// The six wearing wordmark artwork, listed first in the sheet. Five spell their
+// own name; Taskmaster rides with them, and Card/Word/Act Out fill the pair.
+export const HOME_TYPE_ORDER = ['Drawing', 'Improv', 'Card', 'Word', 'Act Out', 'Taskmaster'];
+
+// Everything, in the exact order the Game Types sheet lists it (Figma node
+// 1865-1740). Explicit rather than alphabetical — the layout is designed, not
+// sorted. Favorites is appended by the sheet itself, so it is not listed here.
 export const ALL_TYPE_ORDER = [
-  ...HOME_TYPE_ORDER,
-  'Guess',
+  'Drawing',
+  'Improv',
+  'Card',
   'Word',
-  'Deduce',
-  'Write',
+  'Act Out',
+  'Taskmaster',
+  'Writing',
   'Sound',
-  'Vote',
   'Team',
-  'Sense',
-  'Endure',
-  'Rank',
-  'Persona',
+  'Guessing',
+  'Drinking',
+  'Question',
+  'Deduction',
+  'Voting',
+  'Challenge',
 ];
 
 /**

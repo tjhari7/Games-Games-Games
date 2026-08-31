@@ -8,3 +8,6 @@ dist
 backups/
 src/assets/Games Project Assets/
 src/assets/SVG Sequence Reference/
+
+# Local Netlify folder
+.netlify

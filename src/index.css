@@ -14,6 +14,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'GT Eesti';
+  src: url('./assets/GT-Eesti-LC-Display-Ultra-Bold.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --neutral-bg: #262626;
   --surface: #2f2f2e;
@@ -272,6 +280,23 @@ body:has(.page.swipe-entering-from-right),
   overflow: hidden;
 }
 
+/* Everything below the header block — the list, the card deck with its bottom
+   bar, or the loading line standing in for them — rides in this one wrapper.
+   It exists from the first render, so it starts its slide on the same frame as
+   the header. Swapping "Loading…" for the real content *inside* it is then just
+   a swap: without the wrapper each of those was its own direct child of .page,
+   so the content mounted mid-slide, started the 300ms entrance from zero at
+   whatever moment the API answered, and arrived visibly after the header.
+
+   Flex column, growing, min-height:0 — the chain .card-carousel needs to reach
+   the bottom of the screen, unbroken by the extra level. */
+.page-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* pageSwipe.js checks this same query and navigates straight away rather than
      waiting on an animationend that would never come. */
@@ -294,9 +319,108 @@ body:has(.page.swipe-entering-from-right),
   margin-bottom: 20px;
 }
 
-/* Game Details / Game Category pages use a tighter header-to-content gap */
+/* The game details page sits its card closer to the top-bar icons than the
+   standard 20px header gap. */
 .page-header.page-header-tight {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+
+/* Play A Game wears the same hero banner as the game type pages — full-bleed,
+   rounded along the bottom, dark ink on a bright fill. What it can't borrow is
+   the colour: the type pages take theirs from typeColors.js, and this page is
+   every type at once. It uses the rotating conic sweep off the Play A Game
+   button that opens it instead, so the button and the page it leads to are
+   visibly the same thing. See .home-play-btn in the Home actions section for
+   why the fill is built this way. */
+.random-game-banner {
+  /* Break out of .page's 16px gutters so the banner reaches the screen edges,
+     swallowing the top padding so it starts flush with the top of the page.
+     The padding puts the chrome back inside. */
+  margin: -16px -16px 16px;
+  padding: 16px;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+  position: relative;
+  /* The base the blurred sweep sits on: it fills the corners the blur softens,
+     and it's what the banner falls back to without @property or filter. */
+  background: #ffffff;
+  /* Clip the oversized fill to the banner, and keep its negative z-index
+     scoped here rather than letting it fall behind the page. */
+  overflow: hidden;
+  isolation: isolate;
+  /* Same Safari/Chrome bug .home-play-btn works around: without a (no-op) mask
+     painted over the same box, the blurred ::after bleeds past the rounded
+     corners into a square-cornered rectangle. */
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  mask-image: radial-gradient(white, black);
+  /* Not a descendant of .home-actions, so — like .fab — it runs its own copy of
+     the sweep animation rather than inheriting --ring-turn. */
+  animation: home-ring-turn 3s linear infinite;
+}
+
+.random-game-banner::after {
+  content: '';
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  border-radius: inherit;
+  background-image: conic-gradient(
+    from var(--ring-turn) at 50% 150%,
+    #f0a0dc,
+    #cba8f0,
+    #b2b8f5,
+    #bfe8fb,
+    #a9d97c,
+    #f5c97a,
+    #f0a0dc
+  );
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .random-game-banner {
+    animation: none;
+  }
+}
+
+/* Close and shuffle flip to the dark ink the bright fill needs, matching
+   .category-hero-header's chrome. */
+.random-game-banner .back-link,
+.random-game-banner .icon-btn {
+  background: transparent;
+  border-color: var(--border);
+  color: #1a1816;
+}
+
+.random-game-banner .back-link:hover,
+.random-game-banner .icon-btn:hover:not(:disabled) {
+  background: rgba(26, 24, 22, 0.08);
+}
+
+/* The wordmark is shorter than the 48px close/shuffle buttons on either side,
+   so without a floor the row's height tracks the artwork and the buttons
+   overhang it. Same fix, and same reason, as .category-hero-header .page-header.
+   The banner's own padding is the gap below, so no bottom margin here. */
+.random-game-header {
+  min-height: 48px;
+  margin-bottom: 0;
+}
+
+/* The "Games!" wordmark centred in the banner, in the same centred title slot
+   the type pages use for their hero wordmark. */
+.random-game-header .page-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+}
+
+.random-game-wordmark {
+  display: block;
+  height: 38px;
+  width: auto;
+  /* Nudged down 2px to sit optically level with the close/shuffle button glyphs. */
+  transform: translateY(2px);
 }
 
 /* ------------------------------------------------------------------ *
@@ -511,6 +635,54 @@ body:has(.page.swipe-entering-from-right),
   width: 100%;
 }
 
+/* ------------------------------------------------------------------ *
+ * Icon sizing
+ *
+ * The base .material-symbols-outlined is 20px and stays there — it is what the
+ * bottom action bar, the Players/Time/Materials stat rows and the list-card
+ * meta rows all draw at. The navigational icons run 4px larger: the top bar's
+ * back, close, menu, overflow dot, view toggle, shuffle and filter, the search
+ * bar's magnifier, and on the cards themselves the favourite heart and the
+ * chevron into a game. Circle containers are unchanged at 48px — this is the
+ * glyph inside them only.
+ * ------------------------------------------------------------------ */
+.back-link .material-symbols-outlined,
+.icon-btn .material-symbols-outlined,
+.filter-toggle-btn-icon .material-symbols-outlined,
+.search-bar > .material-symbols-outlined {
+  font-size: 24px;
+}
+
+/* The All Games overflow "⋮" is a smaller-reading glyph than the other 24px
+   icons — three thin dots in the same box. Nudged +4px so it carries the same
+   visual weight as the back arrow beside it. Glyph only; the 48px circle and
+   its fill are untouched. */
+.overflow-menu-btn .material-symbols-outlined {
+  font-size: 28px;
+}
+
+/* The card hearts set their own size (they carry a colour and opacity with
+   it), so they take the +4px in their own rules further down rather than
+   here, where a later declaration of equal weight would just undo it. */
+
+/* The heart is top-heavy: its lobes carry the weight and it tapers to a point,
+   so its ink sits 9.7% of its own height above the middle of its bounding box
+   (measured off the glyph, not guessed). Centred by the box — which is what
+   flexbox does — it reads high in the round button. Two pixels down puts the
+   weight of the shape on the circle's centre instead. The hamburger beside it
+   is symmetrical and needs none of this. */
+.home-fav-icon {
+  transform: translateY(2px);
+}
+
+/* Edit and delete ride in the same .icon-btn container but are actions on a
+   record rather than navigation, and stay at the base size. */
+.icon-btn-label .material-symbols-outlined,
+.icon-btn.danger .material-symbols-outlined,
+.type-list-item-actions .icon-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -524,8 +696,16 @@ body:has(.page.swipe-entering-from-right),
   cursor: pointer;
 }
 
-.icon-btn:hover {
+.icon-btn:hover:not(:disabled) {
   background: var(--neutral-bg);
+}
+
+/* Only the draw page's shuffle disables — while the next card is still being
+   fetched. Dimmed rather than hidden: a button that comes and goes as draws
+   land would be worse than one that's briefly unavailable. */
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .icon-btn-label {
@@ -588,7 +768,7 @@ body:has(.page.swipe-entering-from-right),
 .field select,
 .field textarea {
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 16px;
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -603,11 +783,10 @@ body:has(.page.swipe-entering-from-right),
   border-color: var(--accent);
 }
 
-/* Replaces the native dropdown arrow with the same 36px circle chevron the
-   game cards use for their "open" affordance (.game-list-item-actions
-   .icon-btn), pointed down instead of right so it reads as "expand" rather
-   than "navigate". The select itself still spans and handles the full field —
-   this is a visual overlay, not a second control. */
+/* Replaces the native dropdown arrow with a bare down chevron — no circle, no
+   fill, no ring — so it reads as "expand" without competing with the field.
+   The select itself still spans and handles the full field; this is a visual
+   overlay, not a second control. */
 .select-wrap {
   position: relative;
 }
@@ -629,11 +808,12 @@ body:has(.page.swipe-entering-from-right),
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-pill);
-  background: #ffffff;
-  border: 1px solid #e5e3e0;
-  color: #1a1816;
+  color: var(--text);
   pointer-events: none;
+}
+
+.select-chevron .material-symbols-outlined {
+  font-size: 24px;
 }
 
 .field textarea {
@@ -664,7 +844,70 @@ body:has(.page.swipe-entering-from-right),
   text-align: center;
   color: var(--text-secondary);
   padding: 48px 20px;
-  font-size: 15px;
+  font-size: 16px;
+}
+
+/* All Games (and future list pages) loading indicator: the favicon "G"
+   doing one crisp clockwise turn, then holding briefly before the next.
+   The pause lives inside a single `infinite` animation via the two-stop
+   hold trick — same approach as `home-toss-spin`. */
+.games-loader {
+  /* Pinned to the middle of the visible app area — like .fab / .home-actions,
+     `fixed` resolves against the desktop device frame and the viewport on
+     mobile. Sits dead centre regardless of the header height. It is rendered
+     as a direct child of .page, outside the wrapper the page-entrance slides,
+     so nothing above it is ever transformed — see the opt-out rule below.
+     pointer-events: none so it never intercepts a tap. */
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.games-loader__g {
+  display: block;
+  width: 80px;
+  height: 80px;
+  transform-origin: 50% 50%;
+  /* Painted as a mask, not an <img>, so the glyph can be tinted per page — the
+     type pages pass their own colour (see GamesLoader). The source file is a
+     single opaque path, so an alpha mask reproduces it exactly. */
+  background-color: #b1bfff;
+  -webkit-mask: url('./assets/Games_Favicon.svg') center / contain no-repeat;
+  mask: url('./assets/Games_Favicon.svg') center / contain no-repeat;
+  /* 1000ms cycle: 500ms spin + 500ms hold. lib/useLoaderGate.js mirrors
+     these numbers so content swaps in on the 360deg mark.
+     Leaves fast and decelerates hard into 360deg, so the glyph settles
+     upright rather than slamming to a stop. */
+  animation: games-loader-spin 1000ms cubic-bezier(0, 0.5, 0.25, 1) infinite;
+}
+
+/* The loader is pinned to the frame, so it sits out every page slide. Matching
+   the swipe rules' specificity (0,2,0) and coming later in the file is what
+   overrides `.page.swipe-entering-from-* > *`; a bare .games-loader would lose. */
+.page > .games-loader {
+  animation: none;
+}
+
+@keyframes games-loader-spin {
+  0% {
+    rotate: 0deg;
+  }
+  /* Spin over the first 50% (500ms); hold at 360deg for the remaining
+     50% (500ms). 360deg == 0deg visually, so the loop seam is invisible. */
+  50%,
+  100% {
+    rotate: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .games-loader__g {
+    animation: none;
+  }
 }
 
 .error-message {
@@ -972,7 +1215,8 @@ body:has(.page.swipe-entering-from-right),
 .home-viewall-btn {
   width: 100%;
   flex: none;
-  font-size: 16px;
+  font-size: 22px;
+  font-family: 'GT Eesti', sans-serif;
 }
 
 /* White is no longer the visible fill, but it stays as the base the gradient
@@ -987,6 +1231,12 @@ body:has(.page.swipe-entering-from-right),
      to the pill, and keep its negative z-index scoped to this button. */
   overflow: hidden;
   isolation: isolate;
+  /* Safari/Chrome both fail to clip a blurred, negative-z-index ::after to
+     this pill's overflow: hidden box - the blur bleeds out into a square-
+     cornered rectangle. Painting a (no-op) mask over the same box forces
+     both engines to actually respect the border-radius clip. */
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  mask-image: radial-gradient(white, black);
 }
 
 /* The fill. Blurring it is not decoration — painted sharp, a conic gradient's
@@ -1094,13 +1344,20 @@ body:has(.page.swipe-entering-from-right),
 }
 
 .home-type-icon {
-  height: 20px;
-  width: auto;
+  max-width: 100%;
+  height: auto;
   display: block;
 }
 
-.home-type-icon-lg {
-  height: 42px;
+/* Sound and Guessing export at 20px tall; nudge them up so their shorter
+   wordmarks fill the tile as well as the taller ones. */
+.home-type-icon-taller {
+  height: 22px;
+}
+
+/* Writing exports at 22px tall; trim it a touch so it sits with the others. */
+.home-type-icon-writing {
+  height: 21px;
 }
 
 /* Skeleton placeholders reserve the grid space while types load,
@@ -1368,6 +1625,37 @@ body:has(.page.swipe-entering-from-right),
   border-color: var(--accent);
 }
 
+/* Game Type is multi-select on All Games: a scrollable checklist rather than a
+   single-choice dropdown. */
+.filter-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin: 0 -8px;
+  padding: 2px 8px;
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.filter-checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
 .filter-popover-actions {
   display: flex;
   gap: 12px;
@@ -1376,6 +1664,232 @@ body:has(.page.swipe-entering-from-right),
 
 .filter-popover-actions .btn {
   flex: 1;
+}
+
+/* ------------------------------------------------------------------ *
+ * Filter drawer (All Games only)
+ *
+ * All Games carries every game type plus players and time — too tall for the
+ * shared popover. It gets a full-height panel that slides in from the right
+ * over a scrim. Like .modal-overlay, the fixed positioning resolves to the
+ * device frame on desktop and to the viewport on a real phone.
+ * ------------------------------------------------------------------ */
+/* The scrim fades on the same clock as the panel's slide — both animations are
+   applied at mount, so the dim starts on the tap and runs alongside the drawer
+   rather than snapping in after it has arrived. Same duration and curve, so the
+   two read as one gesture in each direction.
+   The fade lives on a ::before layer, not on .filter-drawer-scrim itself: the
+   panel is a DOM child of the scrim, and CSS opacity on a parent composites its
+   whole subtree, so animating opacity on the scrim div was fading the panel's
+   content along with it — on top of the panel's own slide. Keeping the scrim
+   itself at a constant opacity and animating only its pseudo-element isolates
+   the dim to the background layer, so the panel stays at full opacity and only
+   moves. */
+.filter-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  overscroll-behavior: contain;
+  z-index: 50;
+}
+
+.filter-drawer-scrim::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  animation: filter-scrim-in 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.filter-drawer-scrim.is-closing::before {
+  animation: filter-scrim-out 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes filter-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes filter-scrim-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Slides in from just off the right edge and leaves the way it came — same
+   distance, same duration, same curve, so closing retraces the opening exactly.
+   A keyframe animation rather than a transition: it runs the moment the element
+   is inserted, with no "flip a class next frame" step for a throttled tab to
+   swallow.
+   The curve is deliberately NOT the page-swipe expo-out. That curve is tuned
+   for a full-screen throw and spends 88% of its travel in the first 90ms; over
+   this panel's ~320px it reads as a pop rather than a slide. A symmetric
+   ease-in-out covers 7/37/78/96% across the run — a legible slide, and being
+   symmetric it lets the exit genuinely mirror the entrance. */
+.filter-drawer {
+  width: min(86%, 340px);
+  height: 100%;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -12px 0 28px rgba(0, 0, 0, 0.5);
+  animation: filter-drawer-in 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  will-change: transform;
+}
+
+.filter-drawer.is-closing {
+  animation: filter-drawer-out 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes filter-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes filter-drawer-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-drawer,
+  .filter-drawer.is-closing,
+  .filter-drawer-scrim::before,
+  .filter-drawer-scrim.is-closing::before {
+    animation: none;
+  }
+}
+
+.filter-drawer-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  /* Left padding matches .filter-drawer-body's so "Filters" lines up with
+     "PLAYERS" / "TIME" / "GAME TYPE" below it. */
+  padding: 16px 16px 16px 20px;
+}
+
+.filter-drawer-header h2 {
+  margin: 0;
+  font-family: var(--font-header);
+  font-weight: 500;
+  font-size: 36px;
+  color: var(--text);
+}
+
+/* Matches the position of the overflow-menu button in .page-header-centered
+   (e.g. All Games' "Edit Game Types" icon) — same 16px inset from the top and
+   right edges, same 48px icon-btn. */
+.filter-drawer-header .icon-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.filter-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  /* Keep a scroll gesture inside the drawer from chaining to the page behind,
+     so the page underneath stays exactly where it was. */
+  overscroll-behavior: contain;
+  padding: 0 20px 20px;
+}
+
+.filter-drawer-group {
+  margin-bottom: 28px;
+}
+
+.filter-drawer-group:last-child {
+  margin-bottom: 0;
+}
+
+.filter-drawer-group h3 {
+  margin: 0 0 12px;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.filter-chip-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-chip-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.filter-chip-option.is-selected {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--neutral-bg);
+}
+
+/* The close affordance shown inside any selected chip (players, time, game
+   type). Nudged into the chip's right padding so the label still reads
+   centered. */
+.filter-chip-option__x {
+  font-size: 16px;
+  margin-right: -4px;
+}
+
+.filter-drawer-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+/* "Clear All" sits above Apply as a plain underlined text link, the same
+   treatment the list pages' active-filter row uses. Centered over the
+   full-width Apply button rather than left-aligned like that row. */
+.filter-drawer-clear {
+  align-self: center;
+}
+
+/* Match the homepage action buttons' font (GT Eesti), full-width, 48px tall. */
+.filter-drawer-footer .btn {
+  width: 100%;
+  height: 48px;
+  padding: 0 28px;
+  font-family: 'GT Eesti', sans-serif;
+  font-size: 20px;
+  letter-spacing: 1px;
+  white-space: nowrap;
 }
 
 /* Draw screen */
@@ -1438,19 +1952,16 @@ body:has(.page.swipe-entering-from-right),
      travels — otherwise it was cut off by a vertical seam 16px in from the
      frame edge instead of disappearing at the edge itself. */
   margin-inline: -16px;
-  /* Bottom: swallow .page's 16px gutter so the clip edge lands exactly on the
-     frame's bottom edge and each card's overshoot runs off it. Top: reclaim the
-     12px under the header — a card at full tilt lifts a top corner ~40px above
-     the stack, and this plus the stack's own 36px offset keeps the clip edge
-     clear of it. Stopping at the header rather than reaching over it also
-     leaves the back and shuffle buttons hittable. */
-  margin-block: -12px -16px;
-  padding: 12px 16px 0;
-  /* Contains the swiping card's off-screen travel, and the overshoot every card
-     carries below the frame edge — unclipped, that surplus would turn into
-     70-odd pixels of dead scroll on every draw. `clip` rather than `hidden`:
-     hidden would make this a scroll container, which both allows a stray
-     horizontal scrollbar and would trap any fixed/sticky descendant. */
+  /* Bottom: none — the card's own 16px trailing margin (see .draw-stack__top)
+     is what separates it from the action row below, not this. Top: flush with
+     the header, no padding — the stack's own 36px offset is what keeps it
+     clear of the back and shuffle buttons. */
+  margin-block: -12px 0;
+  padding: 0 16px 0;
+  /* Contains the swiping card's off-screen horizontal travel and a dragged
+     card's tilt overshoot, so neither turns into a stray horizontal scrollbar.
+     `clip` rather than `hidden`: hidden would make this a scroll container,
+     which would also trap any fixed/sticky descendant. */
   overflow: clip;
 }
 
@@ -1480,7 +1991,7 @@ body:has(.page.swipe-entering-from-right),
 
 .game-card-desc {
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: 16px;
   margin: 0;
   line-height: 1.5;
 }
@@ -1503,16 +2014,6 @@ body:has(.page.swipe-entering-from-right),
 .meta-item .material-symbols-outlined {
   color: var(--accent);
   font-size: 18px;
-}
-
-.draw-actions {
-  display: flex;
-  gap: 12px;
-  width: 100%;
-}
-
-.draw-actions .btn {
-  flex: 1;
 }
 
 /* Game Details */
@@ -1559,15 +2060,6 @@ body:has(.page.swipe-entering-from-right),
      game details page. Without this, dropping the entry class would switch the
      computed animation-name back to details-card-in and re-trigger it. */
   animation: none;
-  /* The overshoot past the clip edge, held as padding rather than taken out of
-     the card's height: the clip then only ever eats blank card, never the last
-     line of a long game's rules. */
-  padding-bottom: calc(16px + var(--card-bleed));
-  /* Those corners live below the clip edge and are never in view. Rounding them
-     only risks a sliver of curve surfacing on a card that happens to be exactly
-     as tall as the space it has. */
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
 }
 
 .draw-stack {
@@ -1581,11 +2073,6 @@ body:has(.page.swipe-entering-from-right),
      button. Reserve all three peeks here so that 12px stays a gap instead of
      the deepest layer riding up under the button mid-swipe. */
   margin-top: calc(var(--stack-peek) * 3);
-  /* How far every card runs past the stack's bottom edge — which .draw-stage
-     has parked on the frame's bottom edge and clips at. Enough to cover the
-     ~40px a bottom corner swings up through at full tilt, so mid-swipe there is
-     never a wedge of page showing under the card. */
-  --card-bleed: 72px;
   /* Vertical panning stays with the browser so the page still scrolls under a
      finger; only horizontal movement reaches the pointer handlers. */
   touch-action: pan-y;
@@ -1615,9 +2102,7 @@ body:has(.page.swipe-entering-from-right),
   left: 0;
   width: 100%;
   pointer-events: none;
-  /* Same overshoot the top card gets, so a layer rising into its place mid-drag
-     reaches just as far past the bottom edge. */
-  min-height: calc(100% + var(--card-bleed));
+  min-height: 100%;
 }
 
 .draw-stack__top {
@@ -1625,11 +2110,12 @@ body:has(.page.swipe-entering-from-right),
   z-index: 3;
   /* Every card is at least as tall as the space under the header, whatever its
      game's text amounts to: they end off the bottom edge instead of stopping
-     short of it, so a two-line game and a ten-line one read the same length.
-     The negative margin is the bleed — it grows the card past the stack without
-     growing the stack itself, which is what the layers behind size against. */
+     short of it, so a two-line game and a ten-line one read the same length. */
   flex: 1 0 auto;
-  margin-bottom: calc(var(--card-bleed) * -1);
+  /* Real space, not bleed — scrolling all the way down clears the full card,
+     rounded bottom corners and all, with this much daylight before the action
+     bar's floor. */
+  margin-bottom: 16px;
 }
 
 /* Keep these poses in sync with BEHIND_* / BEHIND_2_* in RandomGame.jsx, which
@@ -1643,10 +2129,13 @@ body:has(.page.swipe-entering-from-right),
   /* Cards run to whatever length their game needs, so a longer one underneath
      would hang below the top card and spill readable text into the page. Clamp
      it to the stack (whose height the top card sets) and clip the remainder:
-     only the strip peeking above should ever be visible.
-     Divided by its own scale, so once shrunk its bottom edge lands exactly
-     where the top card's does — flush with the bleed, not 5% short of it. */
-  height: calc((100% + var(--card-bleed)) / 0.95);
+     only the strip peeking above should ever be visible. The 16px subtracted
+     first is the top card's own trailing margin — stack height includes it,
+     but the top card's actual bottom edge doesn't, so backing it out here is
+     what keeps this layer's bottom flush with that edge instead of poking out
+     past it. Divided by its own scale, so once shrunk its bottom edge lands
+     exactly there, not 5% short of it. */
+  height: calc((100% - 16px) / 0.95);
   overflow: hidden;
 }
 
@@ -1658,7 +2147,7 @@ body:has(.page.swipe-entering-from-right),
   z-index: 1;
   transform-origin: top center;
   transform: translateY(calc(var(--stack-peek) * -2)) scale(0.9);
-  height: calc((100% + var(--card-bleed)) / 0.9);
+  height: calc((100% - 16px) / 0.9);
 }
 
 /* The reserve layer. Hidden at rest — the stack is three deep and this would be
@@ -1670,7 +2159,7 @@ body:has(.page.swipe-entering-from-right),
   z-index: 0;
   transform-origin: top center;
   transform: translateY(calc(var(--stack-peek) * -3)) scale(0.85);
-  height: calc((100% + var(--card-bleed)) / 0.85);
+  height: calc((100% - 16px) / 0.85);
   opacity: 0;
   /* Quick enough to be there by the time the card has moved any real distance.
      Once a settle is running its inline transition takes over the timing. */
@@ -1700,6 +2189,31 @@ body:has(.page.swipe-entering-from-right),
 .draw-stack__incoming {
   z-index: 4;
   transform: translateX(calc(-100% - 80px));
+}
+
+/* The floor for a game's actions — favourite, played, rating, share — used on
+   the random-draw page, the individual game details page, and (as
+   .card-carousel__bar) the list pages' card view: one "actions on a game" bar,
+   wherever a game is being looked at. Sticky rather than fixed so it stays
+   inside the desktop device frame rather than pinning to the browser viewport,
+   and so favouriting or rating never requires scrolling all the way past a
+   long set of rules first.
+ *
+ * On the draw page specifically, the card above it keeps its full rounded
+ * bottom corner and a 16px gap (see .draw-stack__top) — scrolling all the way
+ * down clears the card before this bar's floor.
+ * Flush to all three outer frame edges, breaking out of .page's gutters and
+ * swallowing its bottom padding to reach them. */
+.draw-actions {
+  position: sticky;
+  bottom: 0;
+  /* Above every layer of the stack (0–4), including a card being dragged. */
+  z-index: 5;
+  margin-inline: -16px;
+  margin-bottom: -16px;
+  padding: 18px 24px 24px;
+  background: #1a1816;
+  border-radius: 16px 16px 0 0;
 }
 
 .details-type-tag {
@@ -1754,7 +2268,7 @@ body:has(.page.swipe-entering-from-right),
 }
 
 .stat-row-value {
-  font-size: 15px;
+  font-size: 16px;
   color: #1a1816;
 }
 
@@ -1805,7 +2319,7 @@ body:has(.page.swipe-entering-from-right),
   align-items: center;
   gap: 0;
   height: 48px;
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   padding: 0 8px 0 18px;
   background: transparent;
@@ -1932,6 +2446,137 @@ body:has(.page.swipe-entering-from-right),
   transform: none;
 }
 
+/* ------------------------------------------------------------------ *
+ * Category hero header — every type page, plus Favorites
+ * (CategoryGames.jsx, FavoriteGames.jsx)
+ *
+ * A colored banner replacing the plain "<Type> Games" title: the type's
+ * wordmark logo (the same artwork the Game Types drawer tile wears) plus a
+ * small "GAMES" caption, on the type's own bright color, with the bottom
+ * corners rounded. Everything the header contains — back button, view-mode
+ * toggle, search bar, filter button — normally wears dark, low-contrast
+ * chrome (--surface fill, light text) meant for the app's dark background, so
+ * those get a lighter-weight "ghost" treatment here: transparent fill, the
+ * same dark border, dark (TYPE_TEXT_COLOR) icons/text, so they read against
+ * the bright fill instead of fighting it.
+ * ------------------------------------------------------------------ */
+.category-hero-header {
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+}
+
+/* The hero title (logo + caption) is shorter than the 48px back/toggle
+   buttons, so without this the row's height tracks the text and the buttons
+   overhang top and bottom. Match the button size instead. */
+.category-hero-header .page-header {
+  min-height: 48px;
+  margin-bottom: 12px;
+}
+
+/* Card view drops the search row entirely, so the title's bottom margin would
+   otherwise show as blank fill at the base of the banner. */
+.category-hero-header-card .page-header {
+  margin-bottom: 0;
+}
+
+.category-hero-header .page-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  /* Types with no wordmark artwork fall back to their name as text, which has
+     to flip to the dark ink the rest of the banner's chrome wears. */
+  color: #1a1816;
+}
+
+.category-hero-header .back-link,
+.category-hero-header .icon-btn,
+.category-hero-header .search-bar,
+.category-hero-header .filter-toggle-btn-icon {
+  background: transparent;
+  border-color: var(--border);
+  color: #1a1816;
+}
+
+.category-hero-header .search-bar input,
+.category-hero-header .search-bar input::placeholder,
+.category-hero-header .search-bar .material-symbols-outlined,
+.category-hero-header .mic-btn,
+.category-hero-header .search-clear-btn {
+  color: #1a1816;
+}
+
+/* The filter count badge is normally light-on-dark, which nearly disappears
+   against the bright banner. Invert it here. */
+.category-hero-header .filter-badge {
+  background: #1a1816;
+  color: var(--text);
+}
+
+.category-hero-header .search-clear-btn:hover,
+.category-hero-header .mic-btn:hover,
+.category-hero-header .back-link:hover,
+.category-hero-header .icon-btn:hover:not(:disabled),
+.category-hero-header .filter-toggle-btn-icon:hover {
+  background: rgba(26, 24, 22, 0.08);
+}
+
+.category-hero-logo {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+/* Per-wordmark height trims. Each type's artwork has its own cap height and
+   optical weight, so a single shared height leaves some marks looking large
+   and others small. These nudge the outliers back into line within the 48px
+   title row. Keyed off the img's data-type (the type name). */
+.category-hero-logo[data-type='Guessing'] {
+  height: 30px;
+}
+.category-hero-logo[data-type='Question'] {
+  height: 36px;
+  transform: translateY(-2px);
+}
+.category-hero-logo[data-type='Deduction'] {
+  height: 30px;
+}
+.category-hero-logo[data-type='Challenge'] {
+  height: 30px;
+}
+.category-hero-logo[data-type='Favorites'] {
+  height: 26px;
+}
+.category-hero-logo[data-type='Taskmaster'] {
+  height: 27px;
+}
+
+/* "N Games" — card view only. Sits below the banner instead of inside it, so
+   it doesn't fight the logo for space in the 48px title row. List view has no
+   equivalent: its own "#"/letter headings already carry that role. */
+.category-hero-count {
+  text-align: center;
+  margin: 12px 0;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* Play A Game is a draw, not a browse: "3 of 85" would answer a question
+   nobody asked there and put a number on how much of the deck is left. */
+.random-game-page .card-carousel__counter {
+  display: none;
+}
+
+/* The carousel's own "N of 12" swipe-position readout is redundant with the
+   "12 Games" line above it, so the hero pages hide it. Home's Surprise Me deck
+   is not a hero page and keeps GameCardCarousel's counter as-is. */
+.category-hero-page .card-carousel__counter {
+  display: none;
+}
+
 /* Floating action button for the primary "add" action. Wears the same
    rotating conic-gradient fill as .home-play-btn (see the Home actions
    section above for the full rationale) so the app's one "primary" affordance
@@ -1942,7 +2587,7 @@ body:has(.page.swipe-entering-from-right),
   position: fixed;
   bottom: max(24px, env(safe-area-inset-bottom));
   right: max(20px, calc((100vw - 640px) / 2 + 20px));
-  height: 56px;
+  height: 60px;
   padding: 0 22px 0 18px;
   border-radius: var(--radius-pill);
   border: none;
@@ -1954,12 +2599,17 @@ body:has(.page.swipe-entering-from-right),
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-size: 13px;
+  font-size: 22px;
+  font-family: 'GT Eesti', sans-serif;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   z-index: 15;
   overflow: hidden;
   isolation: isolate;
+  /* Same Safari/Chrome clip bug as .home-play-btn above: without this the
+     blurred ::after bleeds past the pill into a square-cornered rectangle. */
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  mask-image: radial-gradient(white, black);
   animation: home-ring-turn 3s linear infinite;
   transition: transform 0.05s ease;
 }
@@ -1988,8 +2638,15 @@ body:has(.page.swipe-entering-from-right),
   transform: scale(0.95);
 }
 
-.fab .material-symbols-outlined {
-  font-size: 28px;
+.fab-add-icon {
+  width: 20px;
+  height: 20px;
+  /* The asset ships as #262626; the pill's label colour is the same dark on the
+     gradient, so no recolouring is needed. */
+  display: block;
+  /* The old glyph carried its own side bearing; this SVG is edge-to-edge, so it
+     needs the breathing room in the margin instead of .fab's 4px gap. */
+  margin-right: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2011,33 +2668,31 @@ body:has(.page.swipe-entering-from-right),
   align-items: center;
   gap: 4px;
   height: 32px;
-  padding: 0 6px 0 14px;
+  padding: 0 10px 0 14px;
   border-radius: var(--radius-pill);
   border: 1.5px solid var(--border);
   background: transparent;
   color: var(--text);
   font-size: 13px;
   font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.filter-chip button {
+.filter-chip:hover {
+  background: var(--surface);
+  border-color: var(--text-secondary);
+}
+
+.filter-chip__x {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 20px;
   height: 20px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text);
-  cursor: pointer;
 }
 
-.filter-chip button:hover {
-  background: var(--neutral-bg);
-}
-
-.filter-chip button .material-symbols-outlined {
+.filter-chip__x .material-symbols-outlined {
   font-size: 16px;
 }
 
@@ -2109,6 +2764,14 @@ body:has(.page.swipe-entering-from-right),
   padding: 6px 2px;
 }
 
+/* Mounted only once the games arrive, which on a fresh entry is part-way
+   through the page's slide — so it would start the entrance from zero, late,
+   and travel in behind everything else. It sits still in its final place
+   instead (same call as .category-hero-count above). */
+.page > .alphabet-index {
+  animation: none;
+}
+
 .alphabet-index-letter {
   /* Wider side padding than the vertical gap between letters, widening the
      touch target without changing letter spacing — the rail has room now that
@@ -2177,7 +2840,7 @@ body:has(.page.swipe-entering-from-right),
 }
 
 .game-list-item-fav-icon {
-  font-size: 20px;
+  font-size: 24px;
   color: #1a1816;
   opacity: 0.5;
 }
@@ -2354,7 +3017,7 @@ body:has(.page.swipe-entering-from-right),
 }
 
 .carousel-card__fav-icon {
-  font-size: 20px;
+  font-size: 24px;
   color: #1a1816;
   opacity: 0.5;
 }
@@ -2395,11 +3058,9 @@ body:has(.page.swipe-entering-from-right),
   opacity: 0.5;
 }
 
-.carousel-card__body .star-rating {
-  margin-top: 6px;
-}
-
-.game-list-item-main .star-rating {
+.carousel-card__body .star-rating,
+.game-list-item-main .star-rating,
+.details-card .star-rating {
   margin-top: 4px;
 }
 
@@ -2483,10 +3144,27 @@ body:has(.page.swipe-entering-from-right),
   white-space: nowrap;
 }
 
+/* The action row's bar — same treatment as .draw-actions on the random-draw
+   page, so the two "actions on a game" surfaces read as the same piece of
+   chrome. Flush to all three outer frame edges: .card-carousel has already
+   cancelled .page's left/right gutters for every child, so only the bottom
+   one needs swallowing here, to reach the frame's floor the way
+   .card-carousel's own flex:1 doesn't quite. */
+.card-carousel__bar {
+  flex: none;
+  margin-bottom: -16px;
+  padding: 18px 24px 24px;
+  background: #1a1816;
+  border-radius: 16px 16px 0 0;
+}
+
+/* Above the bar, not part of its fill — the counter reads as belonging to
+   the cards it's counting, not to the action row underneath them. */
 .card-carousel__counter {
   flex: none;
   text-align: center;
   padding-top: 12px;
+  margin-bottom: 12px;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -2494,9 +3172,7 @@ body:has(.page.swipe-entering-from-right),
   color: var(--text-secondary);
 }
 
-/* Sits below the counter. .page already carries 16px of bottom padding, so
-   8px more here lands the row 24px clear of the viewport edge.
-   Four equal-width columns rather than centered intrinsic-width flex items —
+/* Four equal-width columns rather than centered intrinsic-width flex items —
    Rating's label goes from "RATING" to "RATING 4.0" once a score is set, and
    as a flex item that extra width used to change the row's total content
    width and re-centre every button around it. A grid column has a fixed
@@ -2506,10 +3182,8 @@ body:has(.page.swipe-entering-from-right),
   display: grid;
   grid-template-columns: repeat(4, 80px);
   justify-content: center;
-  gap: 4px;
+  gap: 8px;
   height: 62.5px;
-  margin-top: 24px;
-  margin-bottom: 8px;
 }
 
 .card-carousel__action {
@@ -2582,8 +3256,6 @@ body:has(.page.swipe-entering-from-right),
   align-items: center;
   justify-content: center;
   height: 62.5px;
-  margin-top: 24px;
-  margin-bottom: 8px;
 }
 
 /* .card-carousel breaks out of .page's 16px gutters (see its negative
@@ -2673,11 +3345,11 @@ body:has(.page.swipe-entering-from-right),
 .type-list-item-name {
   flex: 1;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .protected-badge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -2722,7 +3394,7 @@ body:has(.page.swipe-entering-from-right),
 
 .modal-body {
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   margin-bottom: 24px;
 }
