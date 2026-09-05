@@ -9,7 +9,7 @@
   },
   {
     "id": "1ad88074-3712-4f2e-bb61-c1bcab81a38d",
-    "name": "Vote",
+    "name": "Voting",
     "accent": "#D4E89B",
     "bg": "#313A18",
     "protected": false,
@@ -32,8 +32,16 @@
     "created_at": "2026-07-12T17:21:47.208Z"
   },
   {
+    "id": "3afa5ca1-07e0-42d8-ae67-b1af821e9d20",
+    "name": "Drinking",
+    "accent": "#D8A8F0",
+    "bg": "#32183A",
+    "protected": false,
+    "created_at": "2026-08-16T03:02:45.111Z"
+  },
+  {
     "id": "58149163-c6f8-4029-9d30-d7995da81758",
-    "name": "Write",
+    "name": "Writing",
     "accent": "#9BC9F0",
     "bg": "#182A3A",
     "protected": false,
@@ -49,7 +57,7 @@
   },
   {
     "id": "6071c92f-1084-40c0-b87b-9d8fbfbde62d",
-    "name": "Endure",
+    "name": "Challenge",
     "accent": "#F2E3A2",
     "bg": "#3A3418",
     "protected": false,
@@ -57,7 +65,7 @@
   },
   {
     "id": "883a169c-0725-4b2b-b370-b85521823e19",
-    "name": "Deduce",
+    "name": "Deduction",
     "accent": "#C4B5E8",
     "bg": "#22183A",
     "protected": false,
@@ -73,7 +81,7 @@
   },
   {
     "id": "a1d53eea-dc38-416a-934f-5ec2d1db5bd0",
-    "name": "Talking",
+    "name": "Question",
     "accent": "#2CBA5B",
     "bg": "#183A23",
     "protected": false,
@@ -88,32 +96,8 @@
     "created_at": "2026-07-12T17:21:47.509Z"
   },
   {
-    "id": "afc7dc47-702b-4094-b04b-e3698f7ae1e3",
-    "name": "Rank",
-    "accent": "#B5D9A8",
-    "bg": "#213A18",
-    "protected": false,
-    "created_at": "2026-08-13T01:50:57.778Z"
-  },
-  {
-    "id": "b0a9cb92-4f38-40cb-bf7b-6c31574d2886",
-    "name": "Sense",
-    "accent": "#E8B5D4",
-    "bg": "#3A182C",
-    "protected": false,
-    "created_at": "2026-08-13T01:50:57.778Z"
-  },
-  {
-    "id": "b0da0c3e-1c71-429e-942c-f5f4d88261d5",
-    "name": "Persona",
-    "accent": "#E0A9F0",
-    "bg": "#32183A",
-    "protected": false,
-    "created_at": "2026-08-13T01:50:57.778Z"
-  },
-  {
     "id": "b184a3ac-9279-43a7-bb8b-77a186913413",
-    "name": "Guess",
+    "name": "Guessing",
     "accent": "#A8E6D4",
     "bg": "#183A30",
     "protected": false,

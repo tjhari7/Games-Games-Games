@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PLAYER_OPTIONS, TIME_OPTIONS } from '../lib/filterOptions.js';
 import { prefersReducedMotion } from '../lib/pageSwipe.js';
+import SortSelect from './SortSelect.jsx';
 
 // Full-height filter panel for the two list pages whose filter set — every game
 // type, plus players and time — is too tall for the little popover the category
@@ -83,13 +84,22 @@ function useDrawerPresence(open) {
 export default function FilterDrawer({
   open,
   onClose,
-  types,
-  typeFilter,
-  setTypeFilter,
+  // Game Type is irrelevant on a single type's own page — you're already
+  // looking at just that type — so a category page omits `types` and this
+  // stays false, and the whole section (and its contribution to the active
+  // count) drops out.
+  showTypeFilter = true,
+  types = [],
+  typeFilter = [],
+  setTypeFilter = () => {},
   playersFilter,
   setPlayersFilter,
   timeFilter,
   setTimeFilter,
+  sort,
+  setSort,
+  sortOptions,
+  sortCounts,
   resultCount,
   onClearAll,
 }) {
@@ -140,6 +150,14 @@ export default function FilterDrawer({
         </div>
 
         <div className="filter-drawer-body">
+          {/* Sort sits above the filters, and deliberately outside the active
+              count and Clear All below: it reorders the list rather than
+              narrowing it, so it isn't something to clear. */}
+          <section className="filter-drawer-group">
+            <h3>Sort By</h3>
+            <SortSelect value={sort} onChange={setSort} options={sortOptions} counts={sortCounts} />
+          </section>
+
           <section className="filter-drawer-group">
             <h3>Players</h3>
             <div className="filter-chip-options">
@@ -195,32 +213,34 @@ export default function FilterDrawer({
             </div>
           </section>
 
-          <section className="filter-drawer-group">
-            <h3>Game Type</h3>
-            <div className="filter-chip-options">
-              {types.map((t) => {
-                const selected = typeFilter.includes(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={`filter-chip-option ${selected ? 'is-selected' : ''}`}
-                    onClick={() => toggleType(t.id)}
-                  >
-                    {t.name}
-                    {selected && (
-                      <span
-                        className="material-symbols-outlined filter-chip-option__x"
-                        aria-hidden="true"
-                      >
-                        close
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+          {showTypeFilter && (
+            <section className="filter-drawer-group">
+              <h3>Game Type</h3>
+              <div className="filter-chip-options">
+                {types.map((t) => {
+                  const selected = typeFilter.includes(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`filter-chip-option ${selected ? 'is-selected' : ''}`}
+                      onClick={() => toggleType(t.id)}
+                    >
+                      {t.name}
+                      {selected && (
+                        <span
+                          className="material-symbols-outlined filter-chip-option__x"
+                          aria-hidden="true"
+                        >
+                          close
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </div>
 
         <div className="filter-drawer-footer">

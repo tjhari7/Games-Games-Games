@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useLoaderGate } from '../lib/useLoaderGate.js';
 import GamesLoader from '../components/GamesLoader.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import { api } from '../lib/api.js';
+import { useSheetOverlaySwipe } from '../lib/pageSwipe.js';
 
 const emptyForm = {
   title: '',
@@ -21,6 +22,22 @@ export default function AddEditGame() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
+  const location = useLocation();
+  // Opened as a bottom sheet from Home's ⋮ menu or the All Games + FAB: the page
+  // rose from below over that origin, so Back drops it straight back down to
+  // reveal the origin, which never moved — reopening the ⋮ drawer when the
+  // origin is Home. Every other entry point (a game's Edit button) just steps
+  // back through history. All three facts are frozen at mount because the swipe
+  // hook clears location.state once the entrance has been read.
+  const [arrivedAsSheet] = useState(() => Boolean(location.state?.swipeSheetUp));
+  const [reopenMenu] = useState(() => Boolean(location.state?.reopenMenu));
+  const [sheetBackTo] = useState(() => location.state?.backTo ?? '/');
+  const { startBack, swipeClass, rootProps } = useSheetOverlaySwipe(sheetBackTo, reopenMenu);
+  const goBack = () => (arrivedAsSheet ? startBack() : navigate(-1));
+
+  const title = isEdit ? 'Edit Game' : 'Add Game';
+  // GT Eesti Ultra Bold, matching the Discover / All Games headers.
+  const titleSlot = <span className="page-title-eesti">{title}</span>;
 
   const [types, setTypes] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -97,135 +114,138 @@ export default function AddEditGame() {
     }
   }
 
-  if (!contentReady) {
-    return (
-      <div className="page">
-        <PageHeader title={isEdit ? 'Edit Game' : 'Add Game'} backTo="history" />
-        {showLoader && <GamesLoader />}
-      </div>
-    );
-  }
-
   return (
-    <div className="page">
+    <div className={`page${swipeClass}`} {...rootProps}>
       <PageHeader
-        title={isEdit ? 'Edit Game' : 'Add Game'}
-        backTo="history"
+        title={title}
+        titleSlot={titleSlot}
+        centered
+        onBack={goBack}
         actions={
-          isEdit && (
+          isEdit && contentReady ? (
             <button className="icon-btn danger" onClick={() => setConfirmingDelete(true)} aria-label="Delete">
               <span className="material-symbols-outlined">delete</span>
             </button>
-          )
+          ) : null
         }
       />
 
       {error && <div className="error-message">{error}</div>}
 
-      <form onSubmit={handleSubmit}>
-        <div className="field">
-          <label htmlFor="title">Title *</label>
-          <input
-            id="title"
-            type="text"
-            value={form.title}
-            onChange={(e) => update('title', e.target.value)}
-            placeholder="e.g. Charades"
-            required
-          />
-        </div>
+      {showLoader && <GamesLoader />}
 
-        <div className="field">
-          <label htmlFor="type_id">Game Type *</label>
-          <div className="select-wrap">
-            <select id="type_id" value={form.type_id} onChange={(e) => update('type_id', e.target.value)} required>
-              {types.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            <span className="select-chevron" aria-hidden="true">
-              <span className="material-symbols-outlined">expand_more</span>
-            </span>
-          </div>
-        </div>
+      {/* Stable wrapper: it is here from the first frame and slides in with the
+          header, so swapping the loader for the real form *inside* it doesn't
+          restart the entrance animation for the fields. See .page-content in
+          index.css. */}
+      <div className="page-content">
+        {!contentReady ? null : (
+          <form onSubmit={handleSubmit}>
+            <div className="field">
+              <label htmlFor="title">Title *</label>
+              <input
+                id="title"
+                type="text"
+                value={form.title}
+                onChange={(e) => update('title', e.target.value)}
+                placeholder="e.g. Charades"
+                required
+              />
+            </div>
 
-        <div className="field">
-          <label htmlFor="description">Description</label>
-          <textarea
-            id="description"
-            value={form.description}
-            onChange={(e) => update('description', e.target.value)}
-            placeholder="A brief one or two sentence description"
-          />
-        </div>
+            <div className="field">
+              <label htmlFor="type_id">Game Type *</label>
+              <div className="select-wrap">
+                <select id="type_id" value={form.type_id} onChange={(e) => update('type_id', e.target.value)} required>
+                  {types.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="select-chevron" aria-hidden="true">
+                  <span className="material-symbols-outlined">expand_more</span>
+                </span>
+              </div>
+            </div>
 
-        <div className="field-row">
-          <div className="field">
-            <label htmlFor="players">Players</label>
-            <input
-              id="players"
-              type="text"
-              value={form.players}
-              onChange={(e) => update('players', e.target.value)}
-              placeholder="e.g. 3-6"
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="time">Time</label>
-            <input
-              id="time"
-              type="text"
-              value={form.time}
-              onChange={(e) => update('time', e.target.value)}
-              placeholder="e.g. 10-20 min"
-            />
-          </div>
-        </div>
+            <div className="field">
+              <label htmlFor="description">Description</label>
+              <textarea
+                id="description"
+                value={form.description}
+                onChange={(e) => update('description', e.target.value)}
+                placeholder="A brief one or two sentence description"
+              />
+            </div>
 
-        <div className="field">
-          <label htmlFor="materials">Materials</label>
-          <input
-            id="materials"
-            type="text"
-            value={form.materials}
-            onChange={(e) => update('materials', e.target.value)}
-            placeholder="e.g. Pen and paper"
-          />
-        </div>
+            <div className="field-row">
+              <div className="field">
+                <label htmlFor="players">Players</label>
+                <input
+                  id="players"
+                  type="text"
+                  value={form.players}
+                  onChange={(e) => update('players', e.target.value)}
+                  placeholder="e.g. 3-6"
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="time">Time</label>
+                <input
+                  id="time"
+                  type="text"
+                  value={form.time}
+                  onChange={(e) => update('time', e.target.value)}
+                  placeholder="e.g. 10-20 min"
+                />
+              </div>
+            </div>
 
-        <div className="field">
-          <label htmlFor="rules">Rules</label>
-          <textarea
-            id="rules"
-            value={form.rules}
-            onChange={(e) => update('rules', e.target.value)}
-            placeholder="How to play"
-            rows={6}
-          />
-        </div>
+            <div className="field">
+              <label htmlFor="materials">Materials</label>
+              <input
+                id="materials"
+                type="text"
+                value={form.materials}
+                onChange={(e) => update('materials', e.target.value)}
+                placeholder="e.g. Pen and paper"
+              />
+            </div>
 
-        <div className="field">
-          <label htmlFor="example">Example</label>
-          <textarea
-            id="example"
-            value={form.example}
-            onChange={(e) => update('example', e.target.value)}
-            placeholder="A sample round to make it concrete"
-            rows={4}
-          />
-        </div>
+            <div className="field">
+              <label htmlFor="rules">Rules</label>
+              <textarea
+                id="rules"
+                value={form.rules}
+                onChange={(e) => update('rules', e.target.value)}
+                placeholder="How to play"
+                rows={6}
+              />
+            </div>
 
-        <div className="form-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-neutral" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </form>
+            <div className="field">
+              <label htmlFor="example">Example</label>
+              <textarea
+                id="example"
+                value={form.example}
+                onChange={(e) => update('example', e.target.value)}
+                placeholder="A sample round to make it concrete"
+                rows={4}
+              />
+            </div>
+
+            <div className="form-actions form-actions--lg">
+              <button type="button" className="btn btn-ghost" onClick={goBack}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-neutral" disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
 
       {confirmingDelete && (
         <ConfirmModal

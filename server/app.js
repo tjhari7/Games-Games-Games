@@ -186,8 +186,11 @@ app.get('/api/games', async (req, res) => {
     const values = [];
 
     if (req.query.search) {
+      // Match the game's own title OR its game type's name, so typing a type
+      // word ("guess", "draw", "write", "vote", "drink", "task", "act") pulls in
+      // every game of that type alongside any title that literally contains it.
       values.push(`%${req.query.search}%`);
-      conditions.push(`g.title ilike $${values.length}`);
+      conditions.push(`(g.title ilike $${values.length} or gt.name ilike $${values.length})`);
     }
     if (req.query.type_id) {
       // Accepts one id or a comma-separated list, so All Games can filter on

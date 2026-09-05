@@ -13,14 +13,17 @@ export default function PageHeader({
   actions = null,
   onBack,
   titleSlot = null,
+  hideBack = false,
 }) {
   const navigate = useNavigate();
   const goBack = onBack || (() => (backTo === 'history' ? navigate(-1) : navigate(backTo)));
   return (
     <div className={`page-header ${centered ? 'page-header-centered' : ''} ${tight ? 'page-header-tight' : ''}`}>
-      <button className="back-link" onClick={goBack} aria-label="Back">
-        <span className="material-symbols-outlined">arrow_back</span>
-      </button>
+      {!hideBack && (
+        <button className="back-link" onClick={goBack} aria-label="Back">
+          <span className="material-symbols-outlined">arrow_back</span>
+        </button>
+      )}
       <h1 className="page-title">{titleSlot || title}</h1>
       {actions && <div className="details-header-actions">{actions}</div>}
     </div>

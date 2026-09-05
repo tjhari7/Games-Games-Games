@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useSwipeToHome, prefersReducedMotion, ENTER_MS } from '../lib/pageSwipe.js';
 import { typePillColor, TYPE_TEXT_COLOR } from '../lib/typeColors.js';
 import { TYPE_ICONS, ALL_TYPE_ORDER, orderTypes } from '../lib/gameTypes.js';
 import HomeContent from '../components/HomeContent.jsx';
+import DiscoverContent from '../components/DiscoverContent.jsx';
 
 // How far the sheet has to be pulled down before letting go closes it, and the
 // flick speed that closes it whatever distance it covered.
@@ -44,6 +45,17 @@ const CLOSE_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
  */
 function useSheetStrip() {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Where the close lands. Home by default; opening the sheet from Discover
+  // (its "Browse Game Types" heading) stamps `/discover` so the close drops
+  // back onto that page instead. Captured at mount — usePageSwipe wipes the
+  // history state a tick later.
+  const [backTo] = useState(() => location.state?.sheetBackTo || '/');
+  // Which page rides down behind the sheet on close. Home is the default; from
+  // Discover it's a copy of Discover, so dragging the sheet down reveals the
+  // page being returned to instead of a bare backdrop — the same feel either
+  // way.
+  const homeBack = backTo === '/';
   const pageRef = useRef(null);
   const sheetRef = useRef(null);
   const behindRef = useRef(null);
@@ -74,12 +86,12 @@ function useSheetStrip() {
     if (closingRef.current) return;
     closingRef.current = true;
     if (prefersReducedMotion()) {
-      navigate('/');
+      navigate(backTo);
       return;
     }
-    // Mount Home before measuring, so a close that did not come from a drag
-    // still has something to pull down. flushSync rather than an effect: the
-    // transforms below need the node in the DOM this tick.
+    // Mount the backdrop before measuring, so a close that did not come from a
+    // drag still has something to pull down. flushSync rather than an effect:
+    // the transforms below need the node in the DOM this tick.
     flushSync(() => setRevealing(true));
     const travel = pageRef.current?.getBoundingClientRect().height ?? window.innerHeight;
     // Pin both ends of the strip where they are now — mid-pull for a drag, at
@@ -92,10 +104,10 @@ function useSheetStrip() {
     void pageRef.current?.offsetHeight;
     setTransition(`transform ${ENTER_MS}ms ${CLOSE_EASE}`);
     applyPull(travel);
-    // Landing with no history state is what stops Home replaying its own
-    // entrance: by now the copy above has already brought it into place.
-    timerRef.current = setTimeout(() => navigate('/'), ENTER_MS);
-  }, [navigate, applyPull, setTransition]);
+    // Landing with no history state is what stops the page behind replaying its
+    // own entrance: by now the copy above has already brought it into place.
+    timerRef.current = setTimeout(() => navigate(backTo), ENTER_MS);
+  }, [navigate, backTo, applyPull, setTransition]);
 
   const springBack = useCallback(() => {
     setTransition(`transform ${SPRING_BACK_MS}ms ${CLOSE_EASE}`);
@@ -174,6 +186,7 @@ function useSheetStrip() {
     sheetRef,
     behindRef,
     revealing,
+    homeBack,
     close,
     grabProps: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel },
   };
@@ -189,7 +202,7 @@ export default function GameTypes() {
   // as Home slides off the top. Closing is handled by the strip below, which
   // brings Home back down over the top of the departing sheet.
   const { startForward, swipeClass, rootProps } = useSwipeToHome();
-  const { pageRef, sheetRef, behindRef, revealing, close, grabProps } = useSheetStrip();
+  const { pageRef, sheetRef, behindRef, revealing, homeBack, close, grabProps } = useSheetStrip();
 
   // Seed from the in-memory cache so arriving from Home renders the full grid
   // immediately rather than animating a sheet of skeletons into place.
@@ -220,13 +233,31 @@ export default function GameTypes() {
   const showSkeleton = loading && ordered.length === 0;
   const tiles = [...ordered, FAVORITES_TILE];
 
+  // Opened from Discover's "Browse Game Types" heading (homeBack is false only
+  // then): the sheet already rises from the bottom, but swap its easing for the
+  // curve Discover's other rise transitions use so the two feel identical.
+  const fromDiscover = !homeBack;
+
   return (
-    <div className={`page page-sheet${swipeClass}`} ref={pageRef} {...rootProps}>
-      {revealing && (
-        <div className="page sheet-behind" ref={behindRef} aria-hidden="true">
-          <HomeContent />
-        </div>
-      )}
+    <div
+      className={`page page-sheet${fromDiscover ? ' page-sheet--discover-rise' : ''}${swipeClass}`}
+      ref={pageRef}
+      {...rootProps}
+    >
+      {/* The page being returned to, parked one screen up and pulled down with
+          the sheet so the close reveals it rather than a bare backdrop.
+          DiscoverContent brings its own `.page` wrapper, so its slot skips the
+          class HomeContent's doesn't have. */}
+      {revealing &&
+        (homeBack ? (
+          <div className="page sheet-behind" ref={behindRef} aria-hidden="true">
+            <HomeContent />
+          </div>
+        ) : (
+          <div className="sheet-behind" ref={behindRef} aria-hidden="true">
+            <DiscoverContent />
+          </div>
+        ))}
 
       <div className="sheet" ref={sheetRef}>
         <div className="sheet-grab" {...grabProps}>

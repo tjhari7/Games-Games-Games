@@ -19,6 +19,8 @@ import { useHorizontalSwipeBack } from '../lib/pageSwipe.js';
 import { CARD_VIEW, useGameViewMode } from '../lib/useGameViewMode.js';
 import { useFavoriteGames } from '../lib/useFavoriteGames.js';
 import { useGameRatings } from '../lib/useGameRatings.js';
+import { useMarkedPlayed } from '../lib/useMarkedPlayed.js';
+import { SORT_ALPHA, SORT_OPTIONS_NO_FAVORITES, sortGames, sortLabel, sortEmptyMessage, sortOptionCounts } from '../lib/sortGames.js';
 import StarRating from '../components/StarRating.jsx';
 
 const SpeechRecognition =
@@ -41,6 +43,7 @@ export default function FavoriteGames() {
   const [viewMode, setViewMode] = useGameViewMode();
   const { isFavorite } = useFavoriteGames();
   const { getRating } = useGameRatings();
+  const { isPlayed } = useMarkedPlayed();
   const [types, setTypes] = useState([]);
   // null until loaded, so the search placeholder below doesn't flash "0"
   // before the real count is known.
@@ -51,6 +54,7 @@ export default function FavoriteGames() {
   const [typeFilter, setTypeFilter] = useState([]);
   const [playersFilter, setPlayersFilter] = useState([]);
   const [timeFilter, setTimeFilter] = useState([]);
+  const [sort, setSort] = useState(SORT_ALPHA);
   const [filterOpen, setFilterOpen] = useState(false);
   const [loading, setLoading] = useState(() => api.getCachedGames() === null);
   const [error, setError] = useState(null);
@@ -71,7 +75,23 @@ export default function FavoriteGames() {
   // favorites is always the last, client-side step after the server has
   // applied search/type/players/time.
   const favoriteGames = useMemo(() => games.filter((g) => isFavorite(g.id)), [games, isFavorite]);
+  // Letter headings only describe an alphabetical list, so any other sort drops
+  // them for one flat run of cards. Same rule as All Games.
+  const alphaSort = sort === SORT_ALPHA;
   const letterGroups = useMemo(() => groupByLetter(favoriteGames, (g) => g.title), [favoriteGames]);
+  const sortedGames = useMemo(
+    () =>
+      alphaSort ? favoriteGames : sortGames(favoriteGames, sort, { getRating, isPlayed, isFavorite }),
+    [favoriteGames, sort, alphaSort, getRating, isPlayed, isFavorite],
+  );
+  // What each option in the Sort By dropdown would leave standing, read off
+  // this same pre-sort `favoriteGames` list — whatever search/type/players/time
+  // have already narrowed to. Favorites isn't offered here (every game already
+  // qualifies), so sortOptionCounts' entry for it is simply unused.
+  const sortCounts = useMemo(
+    () => sortOptionCounts(favoriteGames, { getRating, isPlayed, isFavorite }),
+    [favoriteGames, getRating, isPlayed, isFavorite],
+  );
   // The true favorite count, independent of any active search/filter — for the
   // search placeholder, same role totalCount plays on the other list pages.
   const totalCount = useMemo(
@@ -200,6 +220,57 @@ export default function FavoriteGames() {
     };
   }, [debouncedSearch, typeFilter.join(','), playersFilter.join(','), timeFilter.join(',')]);
 
+  // One card, shared by the A–Z grouped render and the flat sorted one so the
+  // two can never drift apart.
+  function renderGameItem(g) {
+    return (
+      <div className="game-list-item" key={g.id} onClick={() => navigate(`/games/${g.id}`)}>
+        <div className="game-list-item-header">
+          <div className="game-list-item-header-left">
+            <span
+              className="type-tag game-list-item-type"
+              style={{ color: TYPE_TEXT_COLOR, background: typePillColor(g.type_name, g.type_bg) }}
+            >
+              {g.type_name}
+            </span>
+            {isFavorite(g.id) && (
+              <span
+                className="material-symbols-outlined game-list-item-fav-icon"
+                style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
+              >
+                favorite
+              </span>
+            )}
+          </div>
+          <div className="game-list-item-actions">
+            <span className="icon-btn" aria-hidden="true">
+              <span className="material-symbols-outlined">chevron_right</span>
+            </span>
+          </div>
+        </div>
+        <div className="game-list-item-main">
+          <div className="game-list-item-title">{g.title}</div>
+          <StarRating value={getRating(g.id)} size={16} className="star-rating--muted" />
+          {g.description && <p className="game-list-item-description">{g.description}</p>}
+          <div className="game-list-item-meta">
+            {g.players && (
+              <span className="meta-item">
+                <span className="material-symbols-outlined">group</span>
+                {g.players}
+              </span>
+            )}
+            {g.time && (
+              <span className="meta-item">
+                <span className="material-symbols-outlined">schedule</span>
+                {g.time}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`page category-hero-page${swipeClass}`} {...rootProps}>
       <div
@@ -282,12 +353,33 @@ export default function FavoriteGames() {
         setPlayersFilter={setPlayersFilter}
         timeFilter={timeFilter}
         setTimeFilter={setTimeFilter}
-        resultCount={favoriteGames.length}
+        sort={sort}
+        setSort={setSort}
+        sortOptions={SORT_OPTIONS_NO_FAVORITES}
+        sortCounts={sortCounts}
+        resultCount={alphaSort ? favoriteGames.length : sortedGames.length}
         onClearAll={clearAllFilters}
       />
 
-      {!cardView && activeFilterChips.length > 0 && (
+      {!cardView && (!alphaSort || activeFilterChips.length > 0) && (
         <div className="filter-chip-row">
+          {/* Leads the row: it describes the whole list, not one value. Its ×
+              restores the alphabetical default rather than removing a
+              narrowing, which is what the spelled-out "Sort:" prefix signals. */}
+          {!alphaSort && (
+            <button
+              className="filter-chip filter-chip--sort"
+              onClick={() => setSort(SORT_ALPHA)}
+              aria-label="Reset sort to alphabetical"
+              type="button"
+            >
+              <span className="filter-chip__prefix">Sort:</span>
+              {sortLabel(sort)}
+              <span className="filter-chip__x" aria-hidden="true">
+                <span className="material-symbols-outlined">close</span>
+              </span>
+            </button>
+          )}
           {activeFilterChips.map((chip) => (
             <button
               className="filter-chip"
@@ -326,66 +418,25 @@ export default function FavoriteGames() {
           <p className="state-message">
             {hasActiveQuery ? 'No games found.' : 'No favorite games yet. Tap the heart on a game to add it here.'}
           </p>
+        ) : !alphaSort && sortedGames.length === 0 ? (
+          <p className="state-message">{sortEmptyMessage(sort)}</p>
         ) : cardView ? (
           <GameCardCarousel
-            games={favoriteGames}
+            games={sortedGames}
             onOpen={(g) => navigate(`/games/${g.id}`)}
             onEdit={(g) => navigate(`/games/${g.id}`)}
           />
-        ) : (
+        ) : alphaSort ? (
           <div className="game-list">
             {letterGroups.map((group) => (
               <div key={group.letter} className="game-list-group">
                 <div className="game-list-letter-heading">{group.letter}</div>
-                {group.items.map((g) => (
-                  <div className="game-list-item" key={g.id} onClick={() => navigate(`/games/${g.id}`)}>
-                    <div className="game-list-item-header">
-                      <div className="game-list-item-header-left">
-                        <span
-                          className="type-tag game-list-item-type"
-                          style={{ color: TYPE_TEXT_COLOR, background: typePillColor(g.type_name, g.type_bg) }}
-                        >
-                          {g.type_name}
-                        </span>
-                        {isFavorite(g.id) && (
-                          <span
-                            className="material-symbols-outlined game-list-item-fav-icon"
-                            style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
-                          >
-                            favorite
-                          </span>
-                        )}
-                      </div>
-                      <div className="game-list-item-actions">
-                        <span className="icon-btn" aria-hidden="true">
-                          <span className="material-symbols-outlined">chevron_right</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="game-list-item-main">
-                      <div className="game-list-item-title">{g.title}</div>
-                      <StarRating value={getRating(g.id)} size={16} className="star-rating--muted" />
-                      {g.description && <p className="game-list-item-description">{g.description}</p>}
-                      <div className="game-list-item-meta">
-                        {g.players && (
-                          <span className="meta-item">
-                            <span className="material-symbols-outlined">group</span>
-                            {g.players}
-                          </span>
-                        )}
-                        {g.time && (
-                          <span className="meta-item">
-                            <span className="material-symbols-outlined">schedule</span>
-                            {g.time}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                {group.items.map(renderGameItem)}
               </div>
             ))}
           </div>
+        ) : (
+          <div className="game-list">{sortedGames.map(renderGameItem)}</div>
         )}
       </div>
     </div>

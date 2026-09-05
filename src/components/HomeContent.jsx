@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, useMotionValue, useSpring } from 'motion/react';
+import KebabMenu from './KebabMenu.jsx';
 import { ALL_TYPE_ORDER, TYPE_TOSS_ICONS, TYPE_TOSS_SPIN, TOSS_SPIN_DEFAULT } from '../lib/gameTypes.js';
 import { api } from '../lib/api.js';
 import g1 from '../assets/G1.svg';
@@ -387,8 +389,26 @@ function LogoLetters() {
  * functions, so Home hands its `startForward` straight through.
  */
 export default function HomeContent({ onGo = NOOP }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const subtitleRef = useRef(null);
   const actionsRef = useRef(null);
+
+  // The ⋮ drawer. Its links navigate straight (no page-swipe) so they don't
+  // fight the drawer's own slide-out. A utility page opened from it (Add Game,
+  // Edit Game Types) sends `reopenMenu` back on its way here, so the drawer is
+  // already open the moment Home lands rather than the visitor dropping to a
+  // bare page. Read once at mount; the effect clears the flag so a manual
+  // reload doesn't force it open again.
+  const [menuOpen, setMenuOpen] = useState(() => Boolean(location.state?.reopenMenu));
+
+  useEffect(() => {
+    if (location.state?.reopenMenu) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // Mount only — a later location change here is a real navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Re-rolled every animation cycle (not once per mount), so the order, the
   // pairings and each icon's side all change from one cycle to the next instead
@@ -477,7 +497,7 @@ export default function HomeContent({ onGo = NOOP }) {
           </button>
         </div>
         <div className="home-topbar">
-          <button className="icon-btn" onClick={() => onGo('/games', 'horizontal')} aria-label="View all games">
+          <button className="icon-btn" onClick={() => setMenuOpen(true)} aria-label="More options">
             <span className="material-symbols-outlined">menu</span>
           </button>
         </div>
@@ -531,6 +551,25 @@ export default function HomeContent({ onGo = NOOP }) {
           Browse Game Types
         </button>
       </div>
+
+      <KebabMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        items={[
+          // View All Games and Discover slide in from the right over the menu and
+          // come back the same way — the page slides off to the right over a Home
+          // that stays put, with this ⋮ menu open again on arrival; their own
+          // back button (useMenuOverlaySwipe) is what reopens the menu, so they
+          // only need the entrance flag here. Add Game and Edit Game Types
+          // instead rise from the bottom as a sheet (swipeSheetUp) and drop back
+          // down on close; they pass `backTo` / `reopenMenu` because they can be
+          // reached from All Games too and read those to decide where Back lands.
+          { label: 'View All Games', icon: 'list', onClick: () => navigate('/games', { state: { swipeForwardFromRight: true } }) },
+          { label: 'Add Game', icon: 'add', onClick: () => navigate('/games/new', { state: { backTo: '/', reopenMenu: true, swipeSheetUp: true } }) },
+          { label: 'Discover Games', icon: 'travel_explore', onClick: () => navigate('/discover', { state: { swipeForwardFromRight: true } }) },
+          { label: 'Edit Game Types', icon: 'category', onClick: () => navigate('/types', { state: { backTo: '/', reopenMenu: true, swipeSheetUp: true } }) },
+        ]}
+      />
     </>
   );
 }

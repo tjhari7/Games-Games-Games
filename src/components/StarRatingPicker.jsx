@@ -21,11 +21,14 @@ function pick(e, index, onChange) {
 // neighbor it's closer to (the midpoint of the gap), rather than falling
 // through to a fixed default — that fallback used to always be the last
 // star, which briefly filled every star while the pointer crossed any gap.
+// Dragging off the left edge of the first star returns 0, so a rating can be
+// cleared without leaving the picker — the low end isn't clamped for that.
 function valueFromPoint(container, clientX) {
   const buttons = container.querySelectorAll('.card-carousel__rating-star-btn');
   if (!buttons.length) return null;
   const rects = Array.from(buttons, (el) => el.getBoundingClientRect());
-  const x = Math.min(Math.max(clientX, rects[0].left), rects[rects.length - 1].right);
+  if (clientX < rects[0].left) return 0;
+  const x = Math.min(clientX, rects[rects.length - 1].right);
   let i = rects.length - 1;
   for (let idx = 0; idx < rects.length; idx++) {
     const gapMidpoint = idx < rects.length - 1 ? (rects[idx].right + rects[idx + 1].left) / 2 : Infinity;

@@ -1,0 +1,351 @@
+import { typePillColor } from './typeColors.js';
+
+// The "Discover" experience is a faked social layer over the real catalog. There
+// are no accounts and nothing is published anywhere — every community game below
+// is one of the games already in the database, wearing a made-up author, a
+// made-up "community rating", and a made-up "saved by N" count. Bundles are
+// curated groupings of those same real games; Game Type Bundles are one bundle
+// per game type, holding that type's whole catalog.
+//
+// Discover surfaces the ENTIRE catalog (all ~85 games). A few dozen titles have
+// hand-tuned social numbers in COMMUNITY_META below; every other game gets a
+// deterministic synthesized set (see metaFor) so the page has plenty to work
+// with. The numbers being a bit duplicative is fine — this is a case-study
+// prototype, not real data.
+//
+// The one genuinely real thing Discover does is Save: that calls the existing
+// server-backed favorites endpoint (see useFavoriteGames), so a saved game shows
+// up on the Favorite Games page and survives a server restart.
+//
+// Everything here is keyed by game TITLE, not id — the backup/seed data carries
+// no stable shared ids across environments, but titles are unique and stable.
+// Selectors take the live games array (from api.getGames) and join by title.
+
+// A small stable of fake curators/authors. Last names stay private everywhere on
+// Discover — always "First L.", never a full surname. Keep new entries in that
+// form.
+const PEOPLE = {
+  dana: { author: 'Dana K.' },
+  theo: { author: 'Theo V.' },
+  ruth: { author: 'Ruth O.' },
+  sam: { author: 'Sam E.' },
+  lena: { author: 'Lena C.' },
+  ivan: { author: 'Ivan P.' },
+  mimi: { author: 'Mimi Z.' },
+  jonas: { author: 'Jonas W.' },
+  priya: { author: 'Priya N.' },
+  marcus: { author: 'Marcus B.' },
+};
+
+function meta(person, communityRating, savedCount) {
+  return { ...PEOPLE[person], communityRating, savedCount };
+}
+
+// Hand-tuned social layer for the "hero" titles — the ones most likely to be
+// looked at closely. Every other game falls through to a synthesized entry in
+// metaFor(), so nothing is missing from Discover.
+export const COMMUNITY_META = {
+  Charades: meta('dana', 4.5, 212),
+  'Fishbowl (aka Salad Bowl)': meta('dana', 5, 188),
+  'Two Truths and a Lie': meta('mimi', 4, 164),
+  'Wink Murder': meta('ivan', 4.5, 121),
+  'Mafia / Werewolf': meta('ivan', 5, 176),
+  'Fake Artist': meta('lena', 4.5, 143),
+  'The Thing': meta('ivan', 4, 66),
+  'Word Imposter': meta('ivan', 4.5, 98),
+  Psychiatrist: meta('theo', 3.5, 41),
+  '20 Questions': meta('theo', 4, 90),
+  Contact: meta('ruth', 4.5, 77),
+  Categories: meta('ruth', 4, 132),
+  'Fake Definitions': meta('ruth', 4.5, 109),
+  'Exquisite Corpse': meta('lena', 4.5, 84),
+  'Telephone Pictionary': meta('lena', 5, 154),
+  'Written Consequences': meta('ruth', 4, 58),
+  Pictionary: meta('lena', 4.5, 201),
+  'One Minute Movie': meta('dana', 4, 73),
+  Freeze: meta('sam', 4.5, 88),
+  'Yes, And': meta('sam', 4, 95),
+  'The Expert': meta('sam', 4, 52),
+  'Sit, Stand, Bend': meta('sam', 3.5, 34),
+  'Hot Seat': meta('mimi', 4, 112),
+  'Would You Rather': meta('mimi', 4, 149),
+  'Most Likely To': meta('mimi', 4.5, 158),
+  Superlatives: meta('jonas', 4, 61),
+  'Tier List': meta('jonas', 4.5, 96),
+  Spectrum: meta('jonas', 4, 47),
+  'Rank The Room': meta('jonas', 3.5, 38),
+  'Kings Cup': meta('marcus', 4, 187),
+  Spoons: meta('marcus', 4.5, 133),
+  'Snort, Raspberry, Whistle': meta('theo', 3.5, 29),
+  'Make Me Laugh': meta('dana', 4, 71),
+  'Keep Talking': meta('theo', 4, 44),
+  'Blind Taste': meta('priya', 4, 63),
+  'Mind Melt': meta('priya', 4.5, 80),
+  'Fifteen Seconds': meta('lena', 4, 55),
+  'Air Draw': meta('priya', 3.5, 31),
+  'Who Am I?': meta('theo', 4, 86),
+  'Hold The Pose': meta('priya', 3.5, 26),
+};
+
+// Curated packs. `gameTitles` reference real titles; anything not currently in
+// the database is skipped by bundleGames(). `accent` is a bright fill the bundle
+// hero wears with dark ink (matches the .category-hero-header treatment).
+//
+// Every game title below appears in exactly ONE curated bundle — the list is a
+// clean partition of the whole 85-game catalog, no repeats across bundles. (The
+// Game Type Bundles are generated separately and still hold each type's full
+// catalog, so a game does show up there too — that's the one intended overlap.)
+export const BUNDLES = [
+  {
+    id: 'penpaper',
+    title: 'Pen & Paper',
+    blurb: 'Hand out a pen and a few sheets and you are ready. Great for tables and trains.',
+    curator: PEOPLE.ruth.author,
+    accent: '#9BC9F0',
+    gameTitles: ['3 Words Pass', 'Blind Contour', 'Connect The Doodles', 'Draw On Back Draw On Paper', 'Draw What You Hear', 'Exquisite Corpse'],
+  },
+  {
+    id: 'crowd',
+    title: 'Icebreakers',
+    blurb: 'Big group openers that need zero setup and get everyone talking in the first minute.',
+    curator: PEOPLE.dana.author,
+    accent: '#F5C99B',
+    gameTitles: ['Two Truths and a Lie', 'Would You Rather', 'Call The Room', 'Most Likely To', 'Superlatives'],
+  },
+  {
+    id: 'sleuths',
+    title: 'For Sleuths & Liars',
+    blurb: 'Hidden roles, bluffing and quiet accusations. Best with a group that likes to argue.',
+    curator: PEOPLE.ivan.author,
+    accent: '#C4B5E8',
+    gameTitles: ['Wink Murder', 'Mafia / Werewolf', 'Fake Artist', 'Word Imposter', 'The Thing', 'Psychiatrist'],
+  },
+  {
+    id: 'twoplayer',
+    title: 'Two Player Night',
+    blurb: 'Just the two of you, no teams, no minimum, still a full game.',
+    curator: PEOPLE.mimi.author,
+    accent: '#B5D9A8',
+    gameTitles: ['20 Questions', 'Mind Melt', 'Air Draw', 'Who Am I?', 'Headphones'],
+  },
+  {
+    id: 'novoice',
+    title: 'Voice Only',
+    blurb: 'No props, no paper, no phones. Works in a car, on a walk, or with the lights off.',
+    curator: PEOPLE.sam.author,
+    accent: '#F2A9C4',
+    gameTitles: ['Yes, And', 'The Expert', 'Fortunately / Unfortunately', 'Keep Talking', 'Celebrity Interview'],
+  },
+
+  // ---- Six more curated packs -------------------------------------------
+  {
+    id: 'onfeet',
+    title: 'Up On Your Feet',
+    blurb: 'Off the couch and into the middle of the room. Act it out, big gestures, no sitting still.',
+    curator: PEOPLE.sam.author,
+    accent: '#F4A98C',
+    gameTitles: ['Charades (Reverse)', 'Scene Switch', 'Half Life', 'Sit, Stand, Bend', "Yes, Let's"],
+  },
+  {
+    id: 'table',
+    title: 'Around The Table',
+    blurb: 'Low-key group games you can play with a fork in one hand and a drink in the other.',
+    curator: PEOPLE.mimi.author,
+    accent: '#AEB8F0',
+    gameTitles: ['Go Fish', 'Spoons', 'Rank The Room', 'Tier List', 'Categories'],
+  },
+  {
+    id: 'deepend',
+    title: 'Deep End',
+    blurb: 'Questions that actually go somewhere. For groups that would rather talk than compete.',
+    curator: PEOPLE.priya.author,
+    accent: '#93D9D0',
+    gameTitles: ['Hot Seat', 'I Think, I Feel, I Want, I Need', 'Emotional Rollercoaster', 'Spectrum', 'Two or Three Headed Interview'],
+  },
+  {
+    id: 'nolaugh',
+    title: 'Try Not To Laugh',
+    blurb: 'Comedy games with one rule: crack up and you are out. You will be out.',
+    curator: PEOPLE.dana.author,
+    accent: '#F2B8C8',
+    gameTitles: ['Make Me Laugh', "Don't Laugh", 'Movie Plot', 'Bad Haiku', 'Gibberish Interpreter', 'Slide Show'],
+  },
+  {
+    id: 'winddown',
+    title: 'Wind Down',
+    blurb: 'Slower, quieter games for the end of the night, when nobody wants to stand up again.',
+    curator: PEOPLE.lena.author,
+    accent: '#C9C2E8',
+    gameTitles: ['One Word Story', 'One Line', 'Last Letter, First Letter', 'Written Consequences', 'Anonymous Answers'],
+  },
+  {
+    id: 'bigroom',
+    title: 'The More The Merrier',
+    blurb: 'Built for a packed room. The bigger the group gets, the better these ones play.',
+    curator: PEOPLE.ivan.author,
+    accent: '#F0D68C',
+    gameTitles: ['Fishbowl (aka Salad Bowl)', 'Human Knot', 'Match Categories Team Game', 'Hum That Tune', 'Contact'],
+  },
+
+  // ---- Length series (kept last) -----------------------------------------
+  // One bundle per rough play-time bucket, so "we've got about X minutes" maps
+  // straight to a shelf. Runs shortest to longest, ending on 30 min.
+  {
+    id: 'time5',
+    title: '5 min Games',
+    blurb: 'Quick hits for the time left over, each one wrapping up in five minutes or less.',
+    curator: PEOPLE.theo.author,
+    accent: '#A8E6D4',
+    gameTitles: ['One Minute Movie', 'Snort, Raspberry, Whistle', 'Fifteen Seconds', 'Hold The Pose', 'Paper Airplane Distance', 'Tallest Tower'],
+  },
+  {
+    id: 'time10',
+    title: '10 min Games',
+    blurb: 'One round, ten minutes, done — the sweet spot when you want a game but not a commitment.',
+    curator: PEOPLE.priya.author,
+    accent: '#B8E0C8',
+    gameTitles: ['Mystery Monster', 'Kings Cup', 'Foley', 'Best Use Of', 'Volcano'],
+  },
+  {
+    id: 'time15',
+    title: '15 min Games',
+    blurb: 'Long enough to get good at, short enough to play three. The default group length.',
+    curator: PEOPLE.lena.author,
+    accent: '#EFE196',
+    gameTitles: ['Knuckle Tattoos', 'Mystery Box', 'Smell Test', 'Guess The Noise', 'Banned Words'],
+  },
+  {
+    id: 'time20',
+    title: '20 min Games',
+    blurb: 'A proper round with room to build. Good for once the night has actually settled in.',
+    curator: PEOPLE.jonas.author,
+    accent: '#F6BE9C',
+    gameTitles: ['Blind Taste', 'Endowment', 'Describe It', 'Match The Majority', 'Freeze'],
+  },
+  {
+    id: 'time30',
+    title: '30 min Games',
+    blurb: 'The long haul — teams, scoring and a real arc. Start these early in the night.',
+    curator: PEOPLE.marcus.author,
+    accent: '#D6B3E0',
+    gameTitles: ['Charades', 'Pictionary', 'Telephone Pictionary', 'Character Swap', 'Secret Trait', 'Fake Definitions'],
+  },
+];
+
+// Deterministic FNV-1a hash of a title, so a game's synthesized social numbers
+// are stable from render to render (and run to run) rather than jumping around.
+function hashTitle(title) {
+  let h = 2166136261;
+  for (let i = 0; i < title.length; i += 1) {
+    h ^= title.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+const PERSON_KEYS = Object.keys(PEOPLE);
+// Weighted toward the 4–4.5 middle so the synthesized part of the catalog still
+// reads as plausibly curated rather than uniformly five stars.
+const SYNTH_RATINGS = [3.5, 4, 4, 4, 4.5, 4.5, 4.5, 5];
+
+// The made-up social layer for a game with no hand-tuned COMMUNITY_META entry:
+// a stable author, rating and saved count derived from the title.
+function syntheticMeta(title) {
+  const h = hashTitle(title);
+  return {
+    ...PEOPLE[PERSON_KEYS[h % PERSON_KEYS.length]],
+    communityRating: SYNTH_RATINGS[(h >>> 3) % SYNTH_RATINGS.length],
+    savedCount: 18 + ((h >>> 6) % 200),
+  };
+}
+
+export function metaFor(title) {
+  return COMMUNITY_META[title] || syntheticMeta(title);
+}
+
+// Prefix marking a synthetic "one whole game type" bundle. getBundle can't build
+// one on its own (it has no types list) — the caller passes the type in via
+// typeBundle(); bundleGames resolves the games straight off the id.
+export const TYPE_BUNDLE_PREFIX = 'type-';
+
+export function isTypeBundleId(id) {
+  return typeof id === 'string' && id.startsWith(TYPE_BUNDLE_PREFIX);
+}
+
+// The blurb on a Game Type Bundle card — a taste of what that kind of game
+// actually plays like, second person and a little loud, not an inventory note.
+// Keyed by type name; a custom type the user has added since falls back to the
+// generic line in typeBundle().
+export const TYPE_BUNDLE_BLURBS = {
+  Drawing: "Grab a pen and some paper — you're about to draw your heart out, badly and proudly.",
+  Improv: 'No script, no plan. Say yes, jump in, and build the scene as you go.',
+  Card: 'Shuffle up. A deck, a handful of rules, and a table full of people ready to bluff.',
+  Word: "Clues, letters and near-misses, all played in the gap between what you can and can't say.",
+  'Act Out': 'Off the couch. You play these with your whole body and not a single word.',
+  Taskmaster: 'Silly missions, strict judging, points that make no sense. Do the task, defend your answer.',
+  Writing: 'Everyone gets a pen and a secret. Fold it over, pass it on, read it back later and howl.',
+  Sound: 'Hums, buzzes and dodgy accents — games you play with your ears instead of your eyes.',
+  Team: 'Pick sides. These only click when a partner can read your mind from across the room.',
+  Guessing: 'One person knows, everyone else is fishing. Ask, narrow it down, blurt it out first.',
+  Drinking: 'House rules, forfeits and a drink in hand. Best played loud and a little reckless.',
+  Question: "Just questions — nosy ones, tricky ones, the ones you'd never ask sober. Answer honestly.",
+  Deduction: 'Someone at the table is lying. Watch faces, trade accusations, hope you pick right.',
+  Voting: 'Everyone points at once. Most likely to, best of, worst of — the group decides and you live with it.',
+  Challenge: 'A dare, a timer, and a room watching. Pull it off or take the forfeit.',
+};
+
+// Build the pseudo-bundle for one game type: its entire catalog, wearing the
+// type's bright pill colour like a curated bundle wears its accent.
+export function typeBundle(type) {
+  return {
+    id: `${TYPE_BUNDLE_PREFIX}${type.id}`,
+    typeId: type.id,
+    title: `${type.name} Games`,
+    blurb:
+      TYPE_BUNDLE_BLURBS[type.name] ||
+      `A stack of ${type.name.toLowerCase()} games to work through.`,
+    accent: typePillColor(type.name, type.bg) || '#E9E4DC',
+  };
+}
+
+export function getBundle(id) {
+  return BUNDLES.find((b) => b.id === id) || null;
+}
+
+// The pool Discover's search and lists run over: the whole catalog, in title
+// order (matching how the list pages sort).
+export function featuredGames(allGames) {
+  return allGames.slice().sort((a, b) => a.title.localeCompare(b.title));
+}
+
+// The "Top N Games" list Discover shows by default: highest made-up community
+// rating first. Ties break by saved count, then title, so the order is stable.
+export function topRatedGames(allGames, limit = 10) {
+  return featuredGames(allGames)
+    .map((g) => ({ game: g, m: metaFor(g.title) }))
+    .sort(
+      (a, b) =>
+        b.m.communityRating - a.m.communityRating ||
+        b.m.savedCount - a.m.savedCount ||
+        a.game.title.localeCompare(b.game.title),
+    )
+    .slice(0, limit)
+    .map((x) => x.game);
+}
+
+// The real games in a bundle. Curated bundles keep the curator's chosen order
+// (titles missing from the database are dropped); a Game Type Bundle is every
+// game of that type, in title order.
+export function bundleGames(bundleId, allGames) {
+  if (isTypeBundleId(bundleId)) {
+    const typeId = bundleId.slice(TYPE_BUNDLE_PREFIX.length);
+    return allGames
+      .filter((g) => g.type_id === typeId)
+      .slice()
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }
+  const bundle = getBundle(bundleId);
+  if (!bundle) return [];
+  const byTitle = new Map(allGames.map((g) => [g.title, g]));
+  return bundle.gameTitles.map((t) => byTitle.get(t)).filter(Boolean);
+}

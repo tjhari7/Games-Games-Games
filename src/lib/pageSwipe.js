@@ -13,6 +13,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 // slide, then the route changes and the incoming one slides in — so only ever
 // one page is mounted.
 //
+// A few pages sit *over* an origin as an overlay rather than on a strip: All
+// Games and Discover slide in from the right over a stationary Home
+// (openedRightOverlay), and Add Game / Edit Game Types rise from below over a
+// stationary Home-with-menu or All Games (openedBelowOverlay). Their exit hands
+// out no entrance flag, so the origin is revealed in place rather than panned
+// back in.
+//
 // Keep these in sync with the page-swipe-* keyframes in index.css.
 export const LEAVE_MS = 150;
 export const ENTER_MS = 300;
@@ -45,7 +52,7 @@ const END = {
   // Home: off the top for the vertical strip, off to the right for the
   // horizontal one.
   home: {
-    entrances: { swipeBack: 'above', swipeBackFromRight: 'right' },
+    entrances: { swipeBack: 'above', swipeBackFromRight: 'right', swipeBackFromLeft: 'left' },
     exits: {
       vertical: { leave: 'up', handOff: { swipeForward: true } },
       horizontal: { leave: 'right', handOff: { swipeForwardFromLeft: true } },
@@ -62,11 +69,41 @@ const END = {
       horizontal: { leave: 'right', handOff: { swipeForwardFromLeft: true } },
     },
   },
-  // Left of Home (the menu, Surprise Me and the game type pages): arrives from
-  // the left, leaves back off to the left.
+  // Left of Home (Surprise Me and the game type pages): arrives from the left,
+  // leaves back off to the left.
   openedLeft: {
     entrances: { swipeForwardFromLeft: 'left' },
     exits: { horizontal: { leave: 'left', handOff: { swipeBackFromRight: true } } },
+  },
+  // Right of Home (the pages launched from the ⋮ menu, which lives on the right
+  // edge — All Games and Discover): arrives from the right, over the menu, and
+  // its back button sends it straight back off to the right as Home pans back
+  // in from the left, the mirror of openedLeft.
+  openedRight: {
+    entrances: { swipeForwardFromRight: 'right' },
+    exits: { horizontal: { leave: 'right', handOff: { swipeBackFromLeft: true } } },
+  },
+  // All Games and Discover, opened from the ⋮ menu on Home's right edge. They
+  // arrive like openedRight — in from the right, over the menu — but on the way
+  // back they read as an overlay lifting off rather than a stop on the strip:
+  // the page slides off to the right over a Home that never moves. So the exit
+  // hands out no entrance flag; Home just sits there and is revealed.
+  openedRightOverlay: {
+    // swipeForwardFromRight: opened fresh from the ⋮ menu. swipeBackFromRight:
+    // a page that Discover itself opened (a game type page) closing back onto
+    // it — Discover slides back in from the right as that page leaves left.
+    entrances: { swipeForwardFromRight: 'right', swipeBackFromRight: 'right' },
+    exits: { horizontal: { leave: 'right', handOff: {} } },
+  },
+  // The utility pages shown as a bottom sheet (Add Game, Edit Game Types),
+  // opened from Home's ⋮ menu or the All Games list. The vertical-axis mirror of
+  // openedRightOverlay: the page rises from below over a stationary origin, and
+  // on the way back drops straight back down over it. The origin — Home with the
+  // ⋮ menu, or All Games — never moves, so the exit hands out no entrance flag
+  // and it is simply revealed.
+  openedBelowOverlay: {
+    entrances: { swipeSheetUp: 'below' },
+    exits: { vertical: { leave: 'down', handOff: {} } },
   },
 };
 
@@ -131,7 +168,7 @@ function usePageSwipe(end) {
       // target to use.
       handOffRef.current = extraState ? { ...exit.handOff, ...extraState } : exit.handOff;
       if (prefersReducedMotion()) {
-        navigate(to, { state: exit.handOff });
+        navigate(to, { state: handOffRef.current });
         return;
       }
       setLeaveSide(exit.leave);
@@ -206,10 +243,141 @@ export function useHorizontalSwipeBack(to = '/') {
 }
 
 /**
+ * The ⋮-menu end of the horizontal strip: it slides in from the right on
+ * arrival, and `startBack()` sends it back off to the right as Home returns from
+ * the left — the mirror of useHorizontalSwipeToHome.
+ *
+ * Currently unused: All Games and Discover switched to useMenuOverlaySwipe so
+ * their back button reopens the ⋮ menu (Home stays put and is revealed) rather
+ * than panning Home back in over a closed menu. Kept for the strip-position
+ * behaviour if a future ⋮ destination wants it.
+ */
+export function useMenuSwipeToHome() {
+  const { start, ...swipe } = usePageSwipe('openedRight');
+  const startBack = useCallback(() => start('/', 'horizontal'), [start]);
+  return { ...swipe, startBack };
+}
+
+/**
+ * All Games and Discover, opened from the ⋮ menu. They arrive sliding in from
+ * the right, over the menu; `startBack()` slides them back off to the right over
+ * a Home that stays put, and hands `{ reopenMenu: true }` (merged with any
+ * `extraState`) along so the ⋮ drawer is open again the moment Home is revealed.
+ * `to` names where Back lands.
+ */
+export function useMenuOverlaySwipe(to = '/', extraState = null) {
+  const { start, ...swipe } = usePageSwipe('openedRightOverlay');
+  const startBack = useCallback(
+    () => start(to, 'horizontal', { reopenMenu: true, ...extraState }),
+    [start, to, extraState],
+  );
+  return { ...swipe, startBack };
+}
+
+/**
+ * The utility pages shown as a bottom sheet (Add Game, Edit Game Types). They
+ * rise from below over a stationary origin on arrival, and `startBack()` drops
+ * them straight back down to reveal it — the origin (Home with the ⋮ menu, or
+ * All Games) never moved, so nothing pans in behind. `to` names where Back
+ * lands; pass `reopenMenu` when the origin is Home's ⋮ menu so the drawer is
+ * open again the moment Home is revealed.
+ */
+export function useSheetOverlaySwipe(to = '/', reopenMenu = false) {
+  const { start, ...swipe } = usePageSwipe('openedBelowOverlay');
+  const startBack = useCallback(
+    () => start(to, 'vertical', reopenMenu ? { reopenMenu: true } : null),
+    [start, to, reopenMenu],
+  );
+  return { ...swipe, startBack };
+}
+
+/**
  * The far end of the horizontal strip, for a page that sits to Home's left: it
  * comes in from the left on arrival, and `startBack()` sends it back off to the
  * left before returning Home.
  */
 export function useHorizontalSwipeToHome() {
   return useHorizontalSwipeBack('/');
+}
+
+// Every card, button and link on the Discover page opens its destination by
+// sliding it up from the bottom of the screen; Back drops it straight back down
+// over a stationary Discover. Both halves run at 300ms on the same easing curve.
+// It gets its own tiny state machine rather than a slot in usePageSwipe (whose
+// fallback timers are pinned to the 150/300ms strip durations and whose leave is
+// half this length). Keep DISCOVER_RISE_MS in sync with the .discover-rise-*
+// rules in index.css (300ms / cubic-bezier(0.22, 0.61, 0.36, 1)).
+export const DISCOVER_RISE_MS = 300;
+
+/**
+ * Entrance + exit for a Discover destination page (All Bundles, a bundle, a
+ * community game). Arrives sliding up from below when navigated to with
+ * `{ state: { discoverRise: true } }`; `startBack()` slides it back down and
+ * then lands on `to` (Discover by default). Spread `rootProps` on the `.page`
+ * root and append `swipeClass` to its className.
+ */
+export function useDiscoverRiseSwipe(to = '/discover') {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [entering, setEntering] = useState(() => Boolean(location.state?.discoverRise));
+  const [leaving, setLeaving] = useState(false);
+  const doneRef = useRef(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  // Drop the flag once consumed so a reload or a return by some other route
+  // doesn't replay the entrance.
+  useEffect(() => {
+    if (entering) navigate(location.pathname + location.search, { replace: true, state: null });
+    // Only meaningful on the entering mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Backstop: a hidden tab freezes the animation timeline, so animationend may
+  // never arrive to clear the entrance clip.
+  useEffect(() => {
+    if (!entering) return undefined;
+    const t = setTimeout(() => setEntering(false), DISCOVER_RISE_MS + 100);
+    return () => clearTimeout(t);
+  }, [entering]);
+
+  const finish = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    clearTimeout(timerRef.current);
+    navigate(to);
+  }, [navigate, to]);
+
+  const startBack = useCallback(() => {
+    if (leaving) return;
+    if (prefersReducedMotion()) {
+      navigate(to);
+      return;
+    }
+    setLeaving(true);
+    timerRef.current = setTimeout(finish, DISCOVER_RISE_MS + 100);
+  }, [leaving, navigate, to, finish]);
+
+  const handleAnimationEnd = useCallback(
+    (e) => {
+      if (leaving && e.animationName === 'discover-rise-out') finish();
+      else if (entering && e.animationName === 'discover-rise-in') setEntering(false);
+    },
+    [leaving, entering, finish],
+  );
+
+  const swipeClass = leaving
+    ? ' discover-rise-leaving'
+    : entering
+      ? ' discover-rise-entering'
+      : '';
+
+  // True while either half of the animation is running — the window in which the
+  // destination page should render an inert Discover behind itself so the slide
+  // reads as rising over the page it was opened from, not over a blank frame.
+  const rising = Boolean(entering || leaving);
+
+  return { swipeClass, rising, startBack, rootProps: { onAnimationEnd: handleAnimationEnd } };
 }

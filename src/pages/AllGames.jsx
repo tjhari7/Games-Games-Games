@@ -11,11 +11,13 @@ import { fastScrollTo } from '../lib/smoothScroll.js';
 import { offsetWithinScroller } from '../lib/pageScroll.js';
 import { useScrollRestoration } from '../lib/useScrollRestoration.js';
 import { useScrollBackHeader } from '../lib/useScrollBackHeader.js';
-import { useHorizontalSwipeToHome } from '../lib/pageSwipe.js';
+import { useMenuOverlaySwipe } from '../lib/pageSwipe.js';
 import { useLoaderGate } from '../lib/useLoaderGate.js';
 import { useDebounced, SEARCH_DEBOUNCE_MS } from '../lib/useDebounced.js';
 import { useFavoriteGames } from '../lib/useFavoriteGames.js';
 import { useGameRatings } from '../lib/useGameRatings.js';
+import { useMarkedPlayed } from '../lib/useMarkedPlayed.js';
+import { SORT_ALPHA, SORT_OPTIONS, sortGames, sortLabel, sortEmptyMessage, sortOptionCounts } from '../lib/sortGames.js';
 import StarRating from '../components/StarRating.jsx';
 import GamesLoader from '../components/GamesLoader.jsx';
 import addIcon from '../assets/Add_Icon.svg';
@@ -29,14 +31,17 @@ const JUMP_GAP = 16;
 
 export default function AllGames() {
   const navigate = useNavigate();
-  // The menu sits to Home's left, so it comes in from the left and leaves back
-  // off to the left. See lib/pageSwipe.js.
-  const { startBack, swipeClass, rootProps } = useHorizontalSwipeToHome();
+  // Opened from the ⋮ menu on Home's right edge: slides in from the right, and its
+  // back button slides it back off to the right over a Home that stays put, with
+  // the ⋮ menu open again on arrival — same as Add Game / Edit Game Types. See
+  // lib/pageSwipe.js.
+  const { startBack, swipeClass, rootProps } = useMenuOverlaySwipe();
   // Header, search and filter ride in one block that scrolls away downward and
   // comes back on any upward scroll. See lib/useScrollBackHeader.js.
   const { ref: headerRef, pinOpen: pinHeaderOpen, releasePin: releaseHeaderPin } = useScrollBackHeader();
   const { isFavorite } = useFavoriteGames();
   const { getRating } = useGameRatings();
+  const { isPlayed } = useMarkedPlayed();
   // Seeded from the module-level caches in api.js, which Home warms in the
   // background (HomeContent). A repeat visit renders its list on the first
   // frame instead of blocking on a fetch, so the loader never appears for data
@@ -47,6 +52,7 @@ export default function AllGames() {
   const [typeFilter, setTypeFilter] = useState([]);
   const [playersFilter, setPlayersFilter] = useState([]);
   const [timeFilter, setTimeFilter] = useState([]);
+  const [sort, setSort] = useState(SORT_ALPHA);
   const [filterOpen, setFilterOpen] = useState(false);
   // Only a cold start blocks. Filters are always empty on mount, so the cached
   // unfiltered list is exactly what this first render wants.
@@ -62,8 +68,22 @@ export default function AllGames() {
   const sectionRefs = useRef({});
   const recognitionRef = useRef(null);
 
+  // A–Z headings and the index rail only describe an alphabetical list, so any
+  // other sort renders one flat run of cards and drops both.
+  const alphaSort = sort === SORT_ALPHA;
   const letterGroups = useMemo(() => groupByLetter(games, (g) => g.title), [games]);
   const presentLetters = useMemo(() => new Set(letterGroups.map((g) => g.letter)), [letterGroups]);
+  const sortedGames = useMemo(
+    () => (alphaSort ? games : sortGames(games, sort, { getRating, isPlayed, isFavorite })),
+    [games, sort, alphaSort, getRating, isPlayed, isFavorite],
+  );
+  // What each option in the Sort By dropdown would leave standing, read off
+  // this same pre-sort `games` list — whatever search/type/players/time have
+  // already narrowed to.
+  const sortCounts = useMemo(
+    () => sortOptionCounts(games, { getRating, isPlayed, isFavorite }),
+    [games, getRating, isPlayed, isFavorite],
+  );
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
@@ -189,16 +209,68 @@ export default function AllGames() {
     };
   }, [debouncedSearch, typeFilter.join(','), playersFilter.join(','), timeFilter.join(',')]);
 
+  // One card, shared by the A–Z grouped render and the flat sorted one so the
+  // two can never drift apart.
+  function renderGameItem(g) {
+    return (
+      <div className="game-list-item" key={g.id} onClick={() => navigate(`/games/${g.id}`)}>
+        <div className="game-list-item-header">
+          <div className="game-list-item-header-left">
+            <span
+              className="type-tag game-list-item-type"
+              style={{ color: TYPE_TEXT_COLOR, background: typePillColor(g.type_name, g.type_bg) }}
+            >
+              {g.type_name}
+            </span>
+            {isFavorite(g.id) && (
+              <span
+                className="material-symbols-outlined game-list-item-fav-icon"
+                style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
+              >
+                favorite
+              </span>
+            )}
+          </div>
+          <div className="game-list-item-actions">
+            <span className="icon-btn" aria-hidden="true">
+              <span className="material-symbols-outlined">chevron_right</span>
+            </span>
+          </div>
+        </div>
+        <div className="game-list-item-main">
+          <div className="game-list-item-title">{g.title}</div>
+          <StarRating value={getRating(g.id)} size={16} className="star-rating--muted" />
+          {g.description && <p className="game-list-item-description">{g.description}</p>}
+          <div className="game-list-item-meta">
+            {g.players && (
+              <span className="meta-item">
+                <span className="material-symbols-outlined">group</span>
+                {g.players}
+              </span>
+            )}
+            {g.time && (
+              <span className="meta-item">
+                <span className="material-symbols-outlined">schedule</span>
+                {g.time}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`page${swipeClass}`} {...rootProps}>
       <div className="scroll-back-header" ref={headerRef}>
         <PageHeader
           title="All Games"
+          titleSlot={<span className="page-title-eesti">All Games</span>}
           centered
           onBack={startBack}
           actions={
-            <button className="icon-btn overflow-menu-btn" onClick={() => navigate('/types')} aria-label="Edit Game Types">
-              <span className="material-symbols-outlined">more_vert</span>
+            <button className="icon-btn all-games-types-btn" onClick={() => navigate('/types', { state: { backTo: '/games', swipeSheetUp: true } })} aria-label="Edit game types">
+              <span className="material-symbols-outlined">category</span>
             </button>
           }
         />
@@ -262,12 +334,33 @@ export default function AllGames() {
         setPlayersFilter={setPlayersFilter}
         timeFilter={timeFilter}
         setTimeFilter={setTimeFilter}
-        resultCount={displayCount ?? games.length}
+        sort={sort}
+        setSort={setSort}
+        sortOptions={SORT_OPTIONS}
+        sortCounts={sortCounts}
+        resultCount={alphaSort ? (displayCount ?? games.length) : sortedGames.length}
         onClearAll={clearAllFilters}
       />
 
-      {activeFilterChips.length > 0 && (
+      {(!alphaSort || activeFilterChips.length > 0) && (
         <div className="filter-chip-row">
+          {/* Leads the row: it describes the whole list, not one value. Its ×
+              restores the alphabetical default rather than removing a
+              narrowing, which is what the spelled-out "Sort:" prefix signals. */}
+          {!alphaSort && (
+            <button
+              className="filter-chip filter-chip--sort"
+              onClick={() => setSort(SORT_ALPHA)}
+              aria-label="Reset sort to alphabetical"
+              type="button"
+            >
+              <span className="filter-chip__prefix">Sort:</span>
+              {sortLabel(sort)}
+              <span className="filter-chip__x" aria-hidden="true">
+                <span className="material-symbols-outlined">close</span>
+              </span>
+            </button>
+          )}
           {activeFilterChips.map((chip) => (
             <button
               className="filter-chip"
@@ -300,7 +393,9 @@ export default function AllGames() {
       <div className="page-content">
         {!contentReady ? null : games.length === 0 ? (
           <p className="state-message">No games found.</p>
-        ) : (
+        ) : !alphaSort && sortedGames.length === 0 ? (
+          <p className="state-message">{sortEmptyMessage(sort)}</p>
+        ) : alphaSort ? (
           <div className="game-list game-list--indexed">
             {letterGroups.map((group) => (
               <div key={group.letter} className="game-list-group">
@@ -312,55 +407,12 @@ export default function AllGames() {
                 >
                   {group.letter}
                 </div>
-                {group.items.map((g) => (
-                  <div className="game-list-item" key={g.id} onClick={() => navigate(`/games/${g.id}`)}>
-                    <div className="game-list-item-header">
-                      <div className="game-list-item-header-left">
-                        <span
-                          className="type-tag game-list-item-type"
-                          style={{ color: TYPE_TEXT_COLOR, background: typePillColor(g.type_name, g.type_bg) }}
-                        >
-                          {g.type_name}
-                        </span>
-                        {isFavorite(g.id) && (
-                          <span
-                            className="material-symbols-outlined game-list-item-fav-icon"
-                            style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
-                          >
-                            favorite
-                          </span>
-                        )}
-                      </div>
-                      <div className="game-list-item-actions">
-                        <span className="icon-btn" aria-hidden="true">
-                          <span className="material-symbols-outlined">chevron_right</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="game-list-item-main">
-                      <div className="game-list-item-title">{g.title}</div>
-                      <StarRating value={getRating(g.id)} size={16} className="star-rating--muted" />
-                      {g.description && <p className="game-list-item-description">{g.description}</p>}
-                      <div className="game-list-item-meta">
-                        {g.players && (
-                          <span className="meta-item">
-                            <span className="material-symbols-outlined">group</span>
-                            {g.players}
-                          </span>
-                        )}
-                        {g.time && (
-                          <span className="meta-item">
-                            <span className="material-symbols-outlined">schedule</span>
-                            {g.time}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                {group.items.map(renderGameItem)}
               </div>
             ))}
           </div>
+        ) : (
+          <div className="game-list">{sortedGames.map(renderGameItem)}</div>
         )}
       </div>
 
@@ -368,13 +420,13 @@ export default function AllGames() {
           that wrapper carries a `translate` during the page entrance, which
           would make it the rail's containing block for those 300ms and shift
           the rail off the frame edge and back. */}
-      {contentReady && games.length > 0 && (
+      {contentReady && alphaSort && games.length > 0 && (
         <AlphabetIndex presentLetters={presentLetters} onSelect={jumpToLetter} />
       )}
 
-      <button className="fab" onClick={() => navigate('/games/new')} aria-label="Add Game">
+      <button className="fab" onClick={() => navigate('/games/new', { state: { backTo: '/games', swipeSheetUp: true } })} aria-label="Add Game">
         <img src={addIcon} alt="" className="fab-add-icon" />
-        ADD
+        ADD GAME
       </button>
     </div>
   );

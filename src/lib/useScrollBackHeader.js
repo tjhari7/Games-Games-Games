@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { getPageScroller, getScrollTop, offsetWithinScroller } from './pageScroll.js';
+import { getScrollTop, offsetWithinScroller } from './pageScroll.js';
 
 // "Scroll back" page chrome, the pattern patagonia.com uses. A list page keeps
 // its header, back button, overflow menu, search bar and filter in one sticky
@@ -37,7 +37,10 @@ const JUMP_DELTA = 400;
 
 const px = (value) => parseFloat(value) || 0;
 
-export function useScrollBackHeader() {
+// `enabled` (default true) turns the whole behaviour off without unmounting the
+// block — pass `false` and the header just stays put, stuck at the top. Discover
+// uses this to lock its header while the search view is open.
+export function useScrollBackHeader(enabled = true) {
   const ref = useRef(null);
   const pinOpenRef = useRef(null);
   const releasePinRef = useRef(null);
@@ -45,13 +48,28 @@ export function useScrollBackHeader() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
-    // Not captured for good: crossing the 601px breakpoint swaps the window for
-    // the device frame's inner scroller, so this is rebound in onResize.
-    let scroller = getPageScroller();
+
+    if (!enabled) {
+      // Locked: drop any pull-up and the easing class so the block sits flush
+      // at the top, and skip wiring up the scroll listeners entirely.
+      el.classList.remove('is-sliding');
+      el.style.setProperty('--scroll-back-shift', '0px');
+      pinOpenRef.current = () => el.offsetHeight;
+      releasePinRef.current = () => {};
+      return undefined;
+    }
+
+    // The reader can scroll the window (phone) or the device frame's inner
+    // scroller (desktop/tablet), and which one is live can change at the 601px
+    // breakpoint. Rather than capture one, listen on both and re-read the active
+    // one every frame via getScrollTop() — a listener stranded on the wrong
+    // element was why the header sometimes never came back.
+    const frameScroller = document.querySelector('.device-frame__scroll');
+    const scrollTargets = frameScroller ? [window, frameScroller] : [window];
 
     let shift = 0; // px the block is currently pulled up by
     let sliding = false; // a transition is in flight, so the drawn value leads `shift`
-    let lastY = Math.max(0, getScrollTop(scroller));
+    let lastY = Math.max(0, getScrollTop());
     let upTravel = 0; // upward scroll accumulated since the last reversal
     let pinned = false; // a jump-to-letter is running; hold the block open
     let frame = 0;
@@ -64,7 +82,7 @@ export function useScrollBackHeader() {
     function measureFlowTop() {
       const page = el.parentElement;
       flowTop =
-        offsetWithinScroller(page, scroller) +
+        offsetWithinScroller(page) +
         px(getComputedStyle(page).paddingTop) +
         px(getComputedStyle(el).marginTop);
     }
@@ -89,7 +107,7 @@ export function useScrollBackHeader() {
 
     function update() {
       frame = 0;
-      const y = Math.max(0, getScrollTop(scroller));
+      const y = Math.max(0, getScrollTop());
       const delta = y - lastY;
       lastY = y;
 
@@ -134,31 +152,18 @@ export function useScrollBackHeader() {
     // gestures, so nothing eases and the next real scroll measures a
     // gesture-sized delta rather than reading the move itself as one.
     function settle() {
-      lastY = Math.max(0, getScrollTop(scroller));
+      lastY = Math.max(0, getScrollTop());
       upTravel = 0;
       setShift(Math.min(Math.max(lastY - flowTop, 0), height), false);
     }
 
     function onResize() {
       height = el.offsetHeight;
-
-      // Crossing the breakpoint hands the scrolling over to a different
-      // element. A listener left on the old one goes deaf, which strands the
-      // block wherever it happened to be — off-screen, that is a blank strip of
-      // page where the header should be. Rebind, then settle against the new
-      // scroller's position, which is its own value and not the old one's.
-      const next = getPageScroller();
-      if (next !== scroller) {
-        scroller.removeEventListener('scroll', onScroll);
-        scroller = next;
-        scroller.addEventListener('scroll', onScroll, { passive: true });
-        measureFlowTop();
-        settle();
-        return;
-      }
-
+      // Both scrollers are already listened to, so crossing the breakpoint needs
+      // no rebind — just re-measure against whichever one is now live and settle
+      // the block to the position the content has actually left it at.
       measureFlowTop();
-      onScroll();
+      settle();
     }
 
     pinOpenRef.current = () => {
@@ -177,7 +182,7 @@ export function useScrollBackHeader() {
       // The jump's whole travel is behind us. Take it as the new baseline so
       // the next real scroll measures a gesture-sized delta from where the page
       // actually is, rather than reading the jump itself as one.
-      lastY = Math.max(0, getScrollTop(scroller));
+      lastY = Math.max(0, getScrollTop());
       upTravel = 0;
     };
 
@@ -188,7 +193,7 @@ export function useScrollBackHeader() {
     // error banner appearing, or a long title wrapping to a second line.
     const observer = new ResizeObserver(onResize);
     observer.observe(el);
-    scroller.addEventListener('scroll', onScroll, { passive: true });
+    scrollTargets.forEach((t) => t.addEventListener('scroll', onScroll, { passive: true }));
     window.addEventListener('resize', onResize);
 
     return () => {
@@ -196,10 +201,10 @@ export function useScrollBackHeader() {
       releasePinRef.current = null;
       cancelAnimationFrame(frame);
       observer.disconnect();
-      scroller.removeEventListener('scroll', onScroll);
+      scrollTargets.forEach((t) => t.removeEventListener('scroll', onScroll));
       window.removeEventListener('resize', onResize);
     };
-  }, []);
+  }, [enabled]);
 
   // Returns the height the block now occupies at the top of the scroller, or 0
   // if it is not mounted yet.
