@@ -1,9 +1,11 @@
 import { typePillColor, TYPE_TEXT_COLOR } from '../lib/typeColors.js';
+import { formatSaves } from '../lib/community.js';
+import Icon from './Icon.jsx';
 import StarRating from './StarRating.jsx';
 
 // The All Games list card, reused nearly verbatim so Discover matches the rest
 // of the app, with three swaps: the star rating shows the community rating (not
-// a personal one), a footer carries the author byline plus a Save button, and
+// a personal one), a footer carries a "saves" count plus a Save button, and
 // the favorited-heart the real list cards show is deliberately dropped here —
 // Discover's "Save" is its own gesture and shouldn't stamp a heart on the card.
 // Save is still a real favorite toggle (useFavoriteGames), passed in by the
@@ -22,7 +24,7 @@ export default function DiscoverGameCard({ game, meta, isSaved, onToggleSave, on
         </div>
         <div className="game-list-item-actions">
           <span className="icon-btn" aria-hidden="true">
-            <span className="material-symbols-outlined">chevron_right</span>
+            <Icon name="chevron_right" />
           </span>
         </div>
       </div>
@@ -33,13 +35,13 @@ export default function DiscoverGameCard({ game, meta, isSaved, onToggleSave, on
         <div className="game-list-item-meta">
           {game.players && (
             <span className="meta-item">
-              <span className="material-symbols-outlined">group</span>
+              <Icon name="group" />
               {game.players}
             </span>
           )}
           {game.time && (
             <span className="meta-item">
-              <span className="material-symbols-outlined">schedule</span>
+              <Icon name="schedule" />
               {game.time}
             </span>
           )}
@@ -54,10 +56,10 @@ export default function DiscoverGameCard({ game, meta, isSaved, onToggleSave, on
               onToggleSave(game.id);
             }}
           >
-            <span className="material-symbols-outlined">{isSaved ? 'check' : 'add'}</span>
+            <Icon name={isSaved ? 'bookmark_check' : 'bookmark'} filled={isSaved} />
             {isSaved ? 'Saved' : 'Save'}
           </button>
-          <span className="discover-card-byline">{meta.author}</span>
+          <span className="discover-card-saves">{formatSaves(meta.savedCount)} saves</span>
         </div>
       </div>
     </div>

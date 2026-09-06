@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
+import Icon from '../components/Icon.jsx';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { typePillColor, TYPE_TEXT_COLOR } from '../lib/typeColors.js';
 import { useFavoriteGames } from '../lib/useFavoriteGames.js';
-import { useDiscoverRiseSwipe } from '../lib/pageSwipe.js';
-import DiscoverRiseBackdrop from '../components/DiscoverRiseBackdrop.jsx';
+import { useMenuOverlaySwipe } from '../lib/pageSwipe.js';
 import StarRating from '../components/StarRating.jsx';
-import { metaFor } from '../lib/community.js';
+import { metaFor, formatSaves } from '../lib/community.js';
 
 function naIfEmpty(value) {
   return value && value.trim() ? value : 'N/A';
@@ -16,7 +16,7 @@ function DetailsHeader({ onBack }) {
   return (
     <div className="page-header page-header-tight">
       <button className="back-link" onClick={onBack} aria-label="Back">
-        <span className="material-symbols-outlined">arrow_back</span>
+        <Icon name="arrow_back" />
       </button>
     </div>
   );
@@ -24,13 +24,13 @@ function DetailsHeader({ onBack }) {
 
 // A read-only view of a "community" game — the same real game record the rest of
 // the app shows, reusing the Game Details card layout, but framed as someone
-// else's shared game: an author byline and community rating instead of the
+// else's shared game: a community rating and saved count instead of the
 // personal favorite/played/rating controls. The one action is Save (a real
 // favorite), plus a link through to the game's normal detail page.
 export default function CommunityGameDetail() {
   const { gameId } = useParams();
   const navigate = useNavigate();
-  const { swipeClass, rising, startBack, rootProps } = useDiscoverRiseSwipe('/discover');
+  const { swipeClass, startBack, rootProps } = useMenuOverlaySwipe('/discover');
   const { isFavorite, toggleFavorite } = useFavoriteGames();
   const [game, setGame] = useState(null);
   const [error, setError] = useState(null);
@@ -46,8 +46,7 @@ export default function CommunityGameDetail() {
 
   if (error) {
     return (
-      <div className={`page discover-rise-page${swipeClass}`} {...rootProps}>
-        {rising && <DiscoverRiseBackdrop />}
+      <div className={`page${swipeClass}`} {...rootProps}>
         <DetailsHeader onBack={goBack} />
         <p className="state-message">{error}</p>
       </div>
@@ -56,8 +55,7 @@ export default function CommunityGameDetail() {
 
   if (!game) {
     return (
-      <div className={`page discover-rise-page${swipeClass}`} {...rootProps}>
-        {rising && <DiscoverRiseBackdrop />}
+      <div className={`page${swipeClass}`} {...rootProps}>
         <DetailsHeader onBack={goBack} />
       </div>
     );
@@ -68,8 +66,7 @@ export default function CommunityGameDetail() {
   const detailsStyle = { '--details-icon-color': typePillColor(game.type_name, game.type_bg) };
 
   return (
-    <div className={`page discover-rise-page${swipeClass}`} {...rootProps}>
-      {rising && <DiscoverRiseBackdrop />}
+    <div className={`page${swipeClass}`} {...rootProps}>
       <DetailsHeader onBack={goBack} />
 
       <div className="details-card" style={detailsStyle}>
@@ -81,43 +78,36 @@ export default function CommunityGameDetail() {
             {game.type_name}
           </span>
           {saved && (
-            <span
-              className="material-symbols-outlined carousel-card__fav-icon"
-              style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
-            >
-              favorite
-            </span>
+            <Icon name="favorite" filled className="carousel-card__fav-icon" />
           )}
         </div>
 
         <h1 className="details-title">{game.title}</h1>
 
-        <div className="community-detail-byline">Shared by {meta.author}</div>
-
         <div className="community-detail-rating">
           <StarRating value={meta.communityRating} size={16} className="star-rating--muted" />
-          <span>{meta.savedCount + (saved ? 1 : 0)} people saved this</span>
+          <span>{formatSaves(meta.savedCount)} people saved this</span>
         </div>
 
         {game.description && <p className="details-desc">{game.description}</p>}
 
         <div className="details-stats">
           <div className="stat-row">
-            <span className="material-symbols-outlined">group</span>
+            <Icon name="group" />
             <div>
               <div className="stat-row-label">Players</div>
               <div className="stat-row-value">{naIfEmpty(game.players)}</div>
             </div>
           </div>
           <div className="stat-row">
-            <span className="material-symbols-outlined">schedule</span>
+            <Icon name="schedule" />
             <div>
               <div className="stat-row-label">Time</div>
               <div className="stat-row-value">{naIfEmpty(game.time)}</div>
             </div>
           </div>
           <div className="stat-row">
-            <span className="material-symbols-outlined">inventory_2</span>
+            <Icon name="inventory_2" />
             <div>
               <div className="stat-row-label">Materials</div>
               <div className="stat-row-value">{naIfEmpty(game.materials)}</div>
@@ -144,7 +134,7 @@ export default function CommunityGameDetail() {
             aria-pressed={saved}
             onClick={() => toggleFavorite(game.id)}
           >
-            <span className="material-symbols-outlined">{saved ? 'check' : 'add'}</span>
+            <Icon name={saved ? 'bookmark_check' : 'bookmark'} filled={saved} />
             {saved ? 'Saved to your collection' : 'Save to my collection'}
           </button>
           <button type="button" className="community-detail-link" onClick={() => navigate(`/games/${game.id}`)}>

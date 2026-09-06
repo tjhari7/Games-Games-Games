@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Icon from './Icon.jsx';
 import { createPortal } from 'react-dom';
 import { prefersReducedMotion } from '../lib/pageSwipe.js';
 
@@ -6,6 +7,20 @@ import { prefersReducedMotion } from '../lib/pageSwipe.js';
 // mount/exit model — but its body is just a short list of navigation links (no
 // "Filters" heading, no controls). Opened by the ⋮ button on All Games.
 const SLIDE_MS = 300;
+
+// True only for the first render, and only when the menu mounts already open —
+// which happens when Home lands here from a utility sheet (Add Game / Edit Game
+// Types) dropping back down. This menu was showing, frozen, behind that sheet
+// the whole way down, so it must appear in place: no slide-in, no scrim fade,
+// no re-animating into a position it never left. Once the menu has closed once,
+// later opens animate normally again.
+function useArrivedOpen(open) {
+  const [instant, setInstant] = useState(open);
+  useEffect(() => {
+    if (!open) setInstant(false);
+  }, [open]);
+  return instant;
+}
 
 // Copied from FilterDrawer: `mounted` outlives `open` by one slide so the exit
 // keyframe can play, with a timer backstop for a throttled/hidden tab that never
@@ -59,6 +74,7 @@ function useDrawerPresence(open) {
 export default function KebabMenu({ open, onClose, items = [] }) {
   const closeRef = useRef(null);
   const { mounted, closing, onExited } = useDrawerPresence(open);
+  const instant = useArrivedOpen(open);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -66,16 +82,23 @@ export default function KebabMenu({ open, onClose, items = [] }) {
       if (e.key === 'Escape') onClose();
     }
     document.addEventListener('keydown', onKey);
-    closeRef.current?.focus();
+    // preventScroll, for the same reason as Discover's search input: the drawer
+    // starts its slide parked off the frame's right edge, so a plain focus()
+    // makes the browser scroll .device-frame sideways to reveal this button —
+    // shoving the whole framed app over on desktop and cancelling the slide.
+    closeRef.current?.focus({ preventScroll: true });
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
   if (!mounted) return null;
 
   const drawer = (
-    <div className={`filter-drawer-scrim ${closing ? 'is-closing' : ''}`} onClick={onClose}>
+    <div
+      className={`filter-drawer-scrim ${closing ? 'is-closing' : ''}${instant ? ' is-instant' : ''}`}
+      onClick={onClose}
+    >
       <div
-        className={`filter-drawer ${closing ? 'is-closing' : ''}`}
+        className={`filter-drawer ${closing ? 'is-closing' : ''}${instant ? ' is-instant' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label="More options"
@@ -86,7 +109,7 @@ export default function KebabMenu({ open, onClose, items = [] }) {
       >
         <div className="filter-drawer-header kebab-menu-header">
           <button ref={closeRef} className="icon-btn" onClick={onClose} aria-label="Close menu">
-            <span className="material-symbols-outlined">close</span>
+            <Icon name="close" />
           </button>
         </div>
 
@@ -101,13 +124,9 @@ export default function KebabMenu({ open, onClose, items = [] }) {
                 item.onClick();
               }}
             >
-              <span className="material-symbols-outlined kebab-menu-link__lead" aria-hidden="true">
-                {item.icon}
-              </span>
+              <Icon name={item.icon} className="kebab-menu-link__lead" />
               <span className="kebab-menu-link__label">{item.label}</span>
-              <span className="material-symbols-outlined kebab-menu-link__chevron" aria-hidden="true">
-                chevron_right
-              </span>
+              <Icon name="chevron_right" className="kebab-menu-link__chevron" />
             </button>
           ))}
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Icon from './Icon.jsx';
 import { createPortal } from 'react-dom';
 import { PLAYER_OPTIONS, TIME_OPTIONS } from '../lib/filterOptions.js';
 import { prefersReducedMotion } from '../lib/pageSwipe.js';
@@ -90,12 +91,22 @@ export default function FilterDrawer({
   // count) drops out.
   showTypeFilter = true,
   types = [],
+  // Per-type game count, keyed by type id — shown greyed in parens after each
+  // Game Type chip. Defaults to empty so a caller that doesn't pass it just
+  // renders the chips without a number.
+  typeCounts = {},
   typeFilter = [],
   setTypeFilter = () => {},
   playersFilter,
   setPlayersFilter,
   timeFilter,
   setTimeFilter,
+  // Per-option game counts for the Players / Time chips, keyed by option value
+  // and each narrowed by the *other* filter groups. An option that would leave
+  // nothing (count 0) renders disabled rather than gone, so the row still shows
+  // what the category could offer. Omitted (empty) = every option stays live.
+  playersCounts = {},
+  timeCounts = {},
   sort,
   setSort,
   sortOptions,
@@ -112,7 +123,9 @@ export default function FilterDrawer({
       if (e.key === 'Escape') onClose();
     }
     document.addEventListener('keydown', onKey);
-    closeRef.current?.focus();
+    // preventScroll — see the matching note in KebabMenu: focusing a control
+    // that is still parked outside the frame scrolls .device-frame to chase it.
+    closeRef.current?.focus({ preventScroll: true });
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
@@ -143,9 +156,9 @@ export default function FilterDrawer({
         }}
       >
         <div className="filter-drawer-header">
-          <h2>Filters</h2>
+          <h2>Filter</h2>
           <button ref={closeRef} className="icon-btn" onClick={onClose} aria-label="Close filters">
-            <span className="material-symbols-outlined">close</span>
+            <Icon name="close" />
           </button>
         </div>
 
@@ -164,21 +177,20 @@ export default function FilterDrawer({
               {PLAYER_OPTIONS.map((n) => {
                 const val = n === '8+' ? '8+' : n;
                 const selected = playersFilter.includes(val);
+                // A picked chip stays live so it can be toggled back off, even
+                // once its own narrowing has emptied the list.
+                const disabled = !selected && playersCounts[val] === 0;
                 return (
                   <button
                     key={n}
                     type="button"
                     className={`filter-chip-option ${selected ? 'is-selected' : ''}`}
+                    disabled={disabled}
                     onClick={() => setPlayersFilter(toggleIn(playersFilter, val))}
                   >
                     {n}
                     {selected && (
-                      <span
-                        className="material-symbols-outlined filter-chip-option__x"
-                        aria-hidden="true"
-                      >
-                        close
-                      </span>
+                      <Icon name="close" className="filter-chip-option__x" />
                     )}
                   </button>
                 );
@@ -191,21 +203,18 @@ export default function FilterDrawer({
             <div className="filter-chip-options">
               {TIME_OPTIONS.map((opt) => {
                 const selected = timeFilter.includes(opt.value);
+                const disabled = !selected && timeCounts[opt.value] === 0;
                 return (
                   <button
                     key={opt.value}
                     type="button"
                     className={`filter-chip-option ${selected ? 'is-selected' : ''}`}
+                    disabled={disabled}
                     onClick={() => setTimeFilter(toggleIn(timeFilter, opt.value))}
                   >
                     {opt.label}
                     {selected && (
-                      <span
-                        className="material-symbols-outlined filter-chip-option__x"
-                        aria-hidden="true"
-                      >
-                        close
-                      </span>
+                      <Icon name="close" className="filter-chip-option__x" />
                     )}
                   </button>
                 );
@@ -219,21 +228,26 @@ export default function FilterDrawer({
               <div className="filter-chip-options">
                 {types.map((t) => {
                   const selected = typeFilter.includes(t.id);
+                  // Same rule as Players / Time: a type with nothing behind it
+                  // dims out rather than disappearing, and a picked chip stays
+                  // live so it can be toggled back off.
+                  const disabled = !selected && typeCounts[t.id] === 0;
                   return (
                     <button
                       key={t.id}
                       type="button"
                       className={`filter-chip-option ${selected ? 'is-selected' : ''}`}
+                      disabled={disabled}
                       onClick={() => toggleType(t.id)}
                     >
                       {t.name}
-                      {selected && (
-                        <span
-                          className="material-symbols-outlined filter-chip-option__x"
-                          aria-hidden="true"
-                        >
-                          close
+                      {typeCounts[t.id] > 0 && (
+                        <span className="filter-chip-option__count">
+                          ({typeCounts[t.id]})
                         </span>
+                      )}
+                      {selected && (
+                        <Icon name="close" className="filter-chip-option__x" />
                       )}
                     </button>
                   );

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import Icon from '../components/Icon.jsx';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useLoaderGate } from '../lib/useLoaderGate.js';
 import GamesLoader from '../components/GamesLoader.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import { api } from '../lib/api.js';
-import { useSheetOverlaySwipe } from '../lib/pageSwipe.js';
+import { useMenuOverlaySwipe } from '../lib/pageSwipe.js';
 
 const emptyForm = {
   title: '',
@@ -23,17 +24,20 @@ export default function AddEditGame() {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const location = useLocation();
-  // Opened as a bottom sheet from Home's ⋮ menu or the All Games + FAB: the page
-  // rose from below over that origin, so Back drops it straight back down to
-  // reveal the origin, which never moved — reopening the ⋮ drawer when the
-  // origin is Home. Every other entry point (a game's Edit button) just steps
-  // back through history. All three facts are frozen at mount because the swipe
-  // hook clears location.state once the entrance has been read.
-  const [arrivedAsSheet] = useState(() => Boolean(location.state?.swipeSheetUp));
+  // Opened from Home's ⋮ menu or the All Games + FAB: the page slides in from the
+  // right over that origin, so Back slides it back off to the right to reveal the
+  // origin, which never moved — reopening the ⋮ drawer when the origin is Home.
+  // Every other entry point (a game's Edit button) just steps back through
+  // history. All three facts are frozen at mount because the swipe hook clears
+  // location.state once the entrance has been read.
+  const [arrivedViaMenu] = useState(() => Boolean(location.state?.swipeForwardFromRight));
   const [reopenMenu] = useState(() => Boolean(location.state?.reopenMenu));
   const [sheetBackTo] = useState(() => location.state?.backTo ?? '/');
-  const { startBack, swipeClass, rootProps } = useSheetOverlaySwipe(sheetBackTo, reopenMenu);
-  const goBack = () => (arrivedAsSheet ? startBack() : navigate(-1));
+  const { startBack, swipeClass, rootProps } = useMenuOverlaySwipe(
+    sheetBackTo,
+    reopenMenu ? { reopenMenu: true } : null,
+  );
+  const goBack = () => (arrivedViaMenu ? startBack() : navigate(-1));
 
   const title = isEdit ? 'Edit Game' : 'Add Game';
   // GT Eesti Ultra Bold, matching the Discover / All Games headers.
@@ -124,7 +128,7 @@ export default function AddEditGame() {
         actions={
           isEdit && contentReady ? (
             <button className="icon-btn danger" onClick={() => setConfirmingDelete(true)} aria-label="Delete">
-              <span className="material-symbols-outlined">delete</span>
+              <Icon name="delete" />
             </button>
           ) : null
         }
@@ -164,7 +168,7 @@ export default function AddEditGame() {
                   ))}
                 </select>
                 <span className="select-chevron" aria-hidden="true">
-                  <span className="material-symbols-outlined">expand_more</span>
+                  <Icon name="expand_more" />
                 </span>
               </div>
             </div>

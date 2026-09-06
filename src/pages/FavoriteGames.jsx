@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Icon from '../components/Icon.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
 import FilterDrawer from '../components/FilterDrawer.jsx';
@@ -10,12 +11,13 @@ import { useDebounced, SEARCH_DEBOUNCE_MS } from '../lib/useDebounced.js';
 import { useLoaderGate } from '../lib/useLoaderGate.js';
 import GamesLoader from '../components/GamesLoader.jsx';
 import { TYPE_ICONS } from '../lib/gameTypes.js';
-import { playersChipLabel, timeChipLabel } from '../lib/filterOptions.js';
+import { playersChipLabel, timeChipLabel, playerOptionCounts, timeOptionCounts } from '../lib/filterOptions.js';
+import { playersMatchesAny, timeMatchesAnyBucket } from '../lib/gameMatch.js';
 import { groupByLetter } from '../lib/alphabetIndex.js';
 import { scrollPageTo } from '../lib/pageScroll.js';
 import { useScrollRestoration } from '../lib/useScrollRestoration.js';
 import { useScrollBackHeader } from '../lib/useScrollBackHeader.js';
-import { useHorizontalSwipeBack } from '../lib/pageSwipe.js';
+import { useHorizontalSwipeBack, useMenuOverlaySwipe } from '../lib/pageSwipe.js';
 import { CARD_VIEW, useGameViewMode } from '../lib/useGameViewMode.js';
 import { useFavoriteGames } from '../lib/useFavoriteGames.js';
 import { useGameRatings } from '../lib/useGameRatings.js';
@@ -29,14 +31,20 @@ const SpeechRecognition =
 export default function FavoriteGames() {
   const navigate = useNavigate();
   const location = useLocation();
-  // Sits to Home's left, same as the menu: in from the left, back off to the
-  // left. Favorites can be opened from two places, though — the heart on Home,
-  // or the Favorites tile in the Game Types sheet — so back returns to whichever
-  // one sent us here (the sheet stamps `backTo` into the history state; Home
-  // leaves it unset). Frozen at mount, before the swipe hook clears the state.
-  // See lib/pageSwipe.js.
+  // Favorites can be opened from two places, and it animates to match each.
+  // From the heart on Home it slides in from the left (back off to the left).
+  // From the Favorites tile in the Game Types sheet it slides in from the right
+  // over the sheet, like the pages launched from Home's ⋮ menu, and on the way
+  // back slides straight off to the right while the sheet sits still underneath,
+  // revealed as though it had only been covered up. The sheet stamps
+  // `swipeForwardFromRight` + `backTo` into the history state; Home leaves both
+  // unset. Frozen at mount, before the swipe hook clears the state. See
+  // lib/pageSwipe.js.
   const [backTo] = useState(() => location.state?.backTo || '/');
-  const { startBack, swipeClass, rootProps } = useHorizontalSwipeBack(backTo);
+  const [fromSheet] = useState(() => Boolean(location.state?.swipeForwardFromRight));
+  const horizontalSwipe = useHorizontalSwipeBack(backTo);
+  const overlaySwipe = useMenuOverlaySwipe(backTo);
+  const { startBack, swipeClass, rootProps } = fromSheet ? overlaySwipe : horizontalSwipe;
   // Header, search and filter ride in one block that scrolls away downward and
   // comes back on any upward scroll. See lib/useScrollBackHeader.js.
   const { ref: headerRef } = useScrollBackHeader();
@@ -100,6 +108,46 @@ export default function FavoriteGames() {
   );
   const hasActiveQuery =
     !!search.trim() || typeFilter.length > 0 || playersFilter.length > 0 || timeFilter.length > 0;
+
+  // How many favorited games carry each type, narrowed by the current Players
+  // and Time selections — so the number beside a Game Type chip previews what
+  // picking that type would actually leave. Ignores the Game Type selection
+  // itself and the search box. Shown greyed in parens in the filter drawer; a
+  // type with no favorited game behind it (given the rest of the selection)
+  // renders disabled there. Every type is seeded to 0 so the drawer can tell
+  // "no matches" from "not computed yet"; before the list loads it returns {}
+  // so nothing disables.
+  const playersParam = playersFilter.join(',');
+  const timeParam = timeFilter.join(',');
+  const typeCounts = useMemo(() => {
+    if (!allGames || !allGames.length) return {};
+    const counts = Object.fromEntries(types.map((t) => [t.id, 0]));
+    allGames.forEach((g) => {
+      if (!isFavorite(g.id)) return;
+      if (!playersMatchesAny(g.players, playersParam)) return;
+      if (!timeMatchesAnyBucket(g.time, timeParam)) return;
+      counts[g.type_id] = (counts[g.type_id] || 0) + 1;
+    });
+    return counts;
+  }, [allGames, isFavorite, types, playersParam, timeParam]);
+
+  // Players / Time options with no favorited game behind them get disabled in
+  // the drawer rather than removed. Counted off the favorited slice of the
+  // catalog, each group narrowed by the *other* two selections but never its
+  // own — so a picked chip never reads as 0.
+  const typeParam = typeFilter.join(',');
+  const favoriteBase = useMemo(
+    () => (allGames || []).filter((g) => isFavorite(g.id) && (!typeParam || typeParam.split(',').includes(g.type_id))),
+    [allGames, isFavorite, typeParam],
+  );
+  const playersCounts = useMemo(
+    () => playerOptionCounts(favoriteBase.filter((g) => timeMatchesAnyBucket(g.time, timeParam))),
+    [favoriteBase, timeParam],
+  );
+  const timeCounts = useMemo(
+    () => timeOptionCounts(favoriteBase.filter((g) => playersMatchesAny(g.players, playersParam))),
+    [favoriteBase, playersParam],
+  );
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
@@ -234,17 +282,12 @@ export default function FavoriteGames() {
               {g.type_name}
             </span>
             {isFavorite(g.id) && (
-              <span
-                className="material-symbols-outlined game-list-item-fav-icon"
-                style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
-              >
-                favorite
-              </span>
+              <Icon name="favorite" filled className="game-list-item-fav-icon" />
             )}
           </div>
           <div className="game-list-item-actions">
             <span className="icon-btn" aria-hidden="true">
-              <span className="material-symbols-outlined">chevron_right</span>
+              <Icon name="chevron_right" />
             </span>
           </div>
         </div>
@@ -255,13 +298,13 @@ export default function FavoriteGames() {
           <div className="game-list-item-meta">
             {g.players && (
               <span className="meta-item">
-                <span className="material-symbols-outlined">group</span>
+                <Icon name="group" />
                 {g.players}
               </span>
             )}
             {g.time && (
               <span className="meta-item">
-                <span className="material-symbols-outlined">schedule</span>
+                <Icon name="schedule" />
                 {g.time}
               </span>
             )}
@@ -297,7 +340,7 @@ export default function FavoriteGames() {
         {!cardView && (
           <div className="search-row">
             <div className="search-bar">
-              <span className="material-symbols-outlined">search</span>
+              <Icon name="search" />
               <input
                 type="text"
                 placeholder={totalCount != null ? `Search ${totalCount} favorite games…` : 'Search favorite games…'}
@@ -311,7 +354,7 @@ export default function FavoriteGames() {
                   aria-label="Clear search"
                   type="button"
                 >
-                  <span className="material-symbols-outlined">close</span>
+                  <Icon name="close" />
                 </button>
               )}
               {search && SpeechRecognition && <span className="search-divider" />}
@@ -322,7 +365,7 @@ export default function FavoriteGames() {
                   aria-label={listening ? 'Stop voice search' : 'Search by voice'}
                   type="button"
                 >
-                  <span className="material-symbols-outlined">mic</span>
+                  <Icon name="mic" />
                 </button>
               )}
             </div>
@@ -333,7 +376,7 @@ export default function FavoriteGames() {
                 onClick={() => setFilterOpen(true)}
                 aria-label="Filter"
               >
-                <span className="material-symbols-outlined">tune</span>
+                <Icon name="tune" />
                 {activeFilterChips.length > 0 && (
                   <span className="filter-badge">{activeFilterChips.length}</span>
                 )}
@@ -347,12 +390,15 @@ export default function FavoriteGames() {
         open={filterOpen}
         onClose={() => setFilterOpen(false)}
         types={types}
+        typeCounts={typeCounts}
         typeFilter={typeFilter}
         setTypeFilter={setTypeFilter}
         playersFilter={playersFilter}
         setPlayersFilter={setPlayersFilter}
         timeFilter={timeFilter}
         setTimeFilter={setTimeFilter}
+        playersCounts={playersCounts}
+        timeCounts={timeCounts}
         sort={sort}
         setSort={setSort}
         sortOptions={SORT_OPTIONS_NO_FAVORITES}
@@ -376,7 +422,7 @@ export default function FavoriteGames() {
               <span className="filter-chip__prefix">Sort:</span>
               {sortLabel(sort)}
               <span className="filter-chip__x" aria-hidden="true">
-                <span className="material-symbols-outlined">close</span>
+                <Icon name="close" />
               </span>
             </button>
           )}
@@ -390,7 +436,7 @@ export default function FavoriteGames() {
             >
               {chip.label}
               <span className="filter-chip__x" aria-hidden="true">
-                <span className="material-symbols-outlined">close</span>
+                <Icon name="close" />
               </span>
             </button>
           ))}

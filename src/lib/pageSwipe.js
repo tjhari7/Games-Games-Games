@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { clearRiseSnapshot } from './riseSnapshot.js';
 
 // Home sits on two strips. The Game Types sheet sits *below* it on a vertical
 // one: opening it pans down — Home slides off the top while the destination
@@ -259,16 +260,18 @@ export function useMenuSwipeToHome() {
 }
 
 /**
- * All Games and Discover, opened from the ⋮ menu. They arrive sliding in from
- * the right, over the menu; `startBack()` slides them back off to the right over
- * a Home that stays put, and hands `{ reopenMenu: true }` (merged with any
- * `extraState`) along so the ⋮ drawer is open again the moment Home is revealed.
- * `to` names where Back lands.
+ * All Games and Discover from the ⋮ menu, and Add Game / Edit Game Types from
+ * either the ⋮ menu or the All Games header. They arrive sliding in from the
+ * right, over a stationary origin; `startBack()` slides them back off to the
+ * right and lands on `to`, revealing the origin where it was left. Pass
+ * `{ reopenMenu: true }` as `extraState` when the origin is Home's ⋮ menu so the
+ * drawer is open again the moment Home is revealed; omit it when Back lands on
+ * All Games.
  */
 export function useMenuOverlaySwipe(to = '/', extraState = null) {
   const { start, ...swipe } = usePageSwipe('openedRightOverlay');
   const startBack = useCallback(
-    () => start(to, 'horizontal', { reopenMenu: true, ...extraState }),
+    () => start(to, 'horizontal', extraState),
     [start, to, extraState],
   );
   return { ...swipe, startBack };
@@ -281,6 +284,9 @@ export function useMenuOverlaySwipe(to = '/', extraState = null) {
  * All Games) never moved, so nothing pans in behind. `to` names where Back
  * lands; pass `reopenMenu` when the origin is Home's ⋮ menu so the drawer is
  * open again the moment Home is revealed.
+ *
+ * Currently unused: kept for the strip-position behaviour if a future
+ * bottom-sheet page wants the expo-out feel.
  */
 export function useSheetOverlaySwipe(to = '/', reopenMenu = false) {
   const { start, ...swipe } = usePageSwipe('openedBelowOverlay');
@@ -295,28 +301,36 @@ export function useSheetOverlaySwipe(to = '/', reopenMenu = false) {
  * The far end of the horizontal strip, for a page that sits to Home's left: it
  * comes in from the left on arrival, and `startBack()` sends it back off to the
  * left before returning Home.
+ *
+ * Currently unused: Surprise Me (its one caller) moved to useDiscoverRiseSwipe
+ * so it rises up from the bottom over Home rather than sliding in from the left.
+ * Kept for the strip-position behaviour if a future left-of-Home page wants it.
  */
 export function useHorizontalSwipeToHome() {
   return useHorizontalSwipeBack('/');
 }
 
-// Every card, button and link on the Discover page opens its destination by
-// sliding it up from the bottom of the screen; Back drops it straight back down
-// over a stationary Discover. Both halves run at 300ms on the same easing curve.
-// It gets its own tiny state machine rather than a slot in usePageSwipe (whose
-// fallback timers are pinned to the 150/300ms strip durations and whose leave is
-// half this length). Keep DISCOVER_RISE_MS in sync with the .discover-rise-*
-// rules in index.css (300ms / cubic-bezier(0.22, 0.61, 0.36, 1)).
+// Surprise Me opens by sliding up from the bottom of the screen; Back drops it
+// straight back down over a stationary Home. Both halves run at 300ms on the
+// same easing curve. It gets its own tiny state machine rather than a slot in
+// usePageSwipe (whose fallback timers are pinned to the 150/300ms strip
+// durations and whose leave is half this length). Keep DISCOVER_RISE_MS in sync
+// with the .discover-rise-* rules in index.css
+// (300ms / cubic-bezier(0.22, 0.61, 0.36, 1)).
 export const DISCOVER_RISE_MS = 300;
 
 /**
- * Entrance + exit for a Discover destination page (All Bundles, a bundle, a
- * community game). Arrives sliding up from below when navigated to with
+ * Entrance + exit for a page that rises up from the bottom of the screen. Now
+ * only Surprise Me, opened from Home — the Discover destinations moved to the
+ * right-side overlay (useMenuOverlaySwipe) so every forward step reads the same.
+ * Arrives sliding up from below when navigated to with
  * `{ state: { discoverRise: true } }`; `startBack()` slides it back down and
- * then lands on `to` (Discover by default). Spread `rootProps` on the `.page`
- * root and append `swipeClass` to its className.
+ * then lands on `to` (Discover by default), carrying `backState` in the history
+ * state if given (e.g. `{ reopenMenu: true }` so Home's ⋮ drawer reopens).
+ * Spread `rootProps` on the `.page` root and append `swipeClass` to its
+ * className.
  */
-export function useDiscoverRiseSwipe(to = '/discover') {
+export function useDiscoverRiseSwipe(to = '/discover', backState = null) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -330,7 +344,13 @@ export function useDiscoverRiseSwipe(to = '/discover') {
   // Drop the flag once consumed so a reload or a return by some other route
   // doesn't replay the entrance.
   useEffect(() => {
-    if (entering) navigate(location.pathname + location.search, { replace: true, state: null });
+    if (!entering) return;
+    navigate(location.pathname + location.search, { replace: true, state: null });
+    // The scroller carries its position across a route change, so a rising page
+    // opened from a scrolled list would otherwise mount partway down. Reset it
+    // so the page — and the frozen still behind it — start from the top.
+    document.querySelector('.device-frame__scroll')?.scrollTo(0, 0);
+    window.scrollTo(0, 0);
     // Only meaningful on the entering mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -347,18 +367,22 @@ export function useDiscoverRiseSwipe(to = '/discover') {
     if (doneRef.current) return;
     doneRef.current = true;
     clearTimeout(timerRef.current);
-    navigate(to);
-  }, [navigate, to]);
+    // The page has finished dropping back down — the frozen backdrop still it
+    // travelled over (if any) has done its job.
+    clearRiseSnapshot();
+    navigate(to, backState ? { state: backState } : undefined);
+  }, [navigate, to, backState]);
 
   const startBack = useCallback(() => {
     if (leaving) return;
     if (prefersReducedMotion()) {
-      navigate(to);
+      clearRiseSnapshot();
+      navigate(to, backState ? { state: backState } : undefined);
       return;
     }
     setLeaving(true);
     timerRef.current = setTimeout(finish, DISCOVER_RISE_MS + 100);
-  }, [leaving, navigate, to, finish]);
+  }, [leaving, navigate, to, backState, finish]);
 
   const handleAnimationEnd = useCallback(
     (e) => {

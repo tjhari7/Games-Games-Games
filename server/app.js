@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import { pool } from './db.js';
 import dotenv from 'dotenv';
+// Players / Time matching is shared with the front end (the filter drawer uses
+// it to show a live per-type count). See src/lib/gameMatch.js.
+import { playersMatchesAny, timeMatchesAnyBucket } from '../src/lib/gameMatch.js';
 
 dotenv.config();
 
@@ -9,86 +12,6 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-
-// Parses flexible player-range text ("2-4", "3+", "1", "2 to 6") and tests
-// whether a given player count fits within it.
-function playersMatch(playersText, target) {
-  if (!playersText) return false;
-  // "8+" means "supports a group of 8 or more" — match games whose range
-  // reaches 8 or beyond, rather than requiring an exact player count.
-  if (target === '8+') {
-    const text = playersText.trim();
-    const plusMatch = text.match(/^(\d+)\s*\+/);
-    if (plusMatch) return true;
-    const rangeMatch = text.match(/(\d+)\s*(?:-|to)\s*(\d+)/);
-    if (rangeMatch) return Number(rangeMatch[2]) >= 8;
-    const singleMatch = text.match(/^(\d+)$/);
-    if (singleMatch) return Number(singleMatch[1]) >= 8;
-    return false;
-  }
-  const text = playersText.trim();
-  const plusMatch = text.match(/^(\d+)\s*\+/);
-  if (plusMatch) return target >= Number(plusMatch[1]);
-  const rangeMatch = text.match(/(\d+)\s*(?:-|to)\s*(\d+)/);
-  if (rangeMatch) {
-    const [, lo, hi] = rangeMatch;
-    return target >= Number(lo) && target <= Number(hi);
-  }
-  const singleMatch = text.match(/^(\d+)$/);
-  if (singleMatch) return target === Number(singleMatch[1]);
-  return false;
-}
-
-// Parses flexible time text ("5 min", "10-20 min", "30 min+") into a rough
-// [min, max] range in minutes, then tests whether it overlaps a bucket.
-function parseTimeRangeMinutes(timeText) {
-  if (!timeText) return null;
-  const text = timeText.toLowerCase();
-  // "Under 10 min" is a ceiling, not a single value — without this it would
-  // fall through to singleMatch and parse as exactly 10.
-  const underMatch = text.match(/^\s*(?:under|less than|up to)\s*(\d+)/);
-  if (underMatch) return [0, Number(underMatch[1])];
-  const plusMatch = text.match(/(\d+)\s*(?:min|minutes)?\s*\+/);
-  if (plusMatch) return [Number(plusMatch[1]), Infinity];
-  const rangeMatch = text.match(/(\d+)\s*-\s*(\d+)/);
-  if (rangeMatch) return [Number(rangeMatch[1]), Number(rangeMatch[2])];
-  const singleMatch = text.match(/(\d+)/);
-  if (singleMatch) return [Number(singleMatch[1]), Number(singleMatch[1])];
-  return null;
-}
-
-const TIME_BUCKET_RANGES = {
-  '5min': [0, 7],
-  '10min': [8, 12],
-  '15min': [13, 20],
-  '30plus': [21, Infinity],
-};
-
-// Matches on the game's minimum stated time only, so a game only shows up
-// under one bucket rather than every bucket its range could reach into.
-function timeMatchesBucket(timeText, bucket) {
-  const range = parseTimeRangeMinutes(timeText);
-  if (!range) return false;
-  const [lo] = range;
-  const bucketRange = TIME_BUCKET_RANGES[bucket];
-  if (!bucketRange) return true;
-  const [bucketLo, bucketHi] = bucketRange;
-  return lo >= bucketLo && lo <= bucketHi;
-}
-
-// The `players` and `time_bucket` query params are comma-separated lists (the
-// filter UI is multi-select). A game passes if it fits *any* one of the chosen
-// values — an OR within each group.
-function playersMatchesAny(playersText, param) {
-  if (!param) return true;
-  const targets = param.split(',').map((p) => (p === '8+' ? '8+' : Number(p)));
-  return targets.some((t) => playersMatch(playersText, t));
-}
-
-function timeMatchesAnyBucket(timeText, param) {
-  if (!param) return true;
-  return param.split(',').some((b) => timeMatchesBucket(timeText, b));
-}
 
 async function getUnassignedTypeId() {
   const { rows } = await pool.query('select id from game_types where name = $1', ['Unassigned']);

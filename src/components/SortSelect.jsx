@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
+import Icon from './Icon.jsx';
 import { sortLabel } from '../lib/sortGames.js';
 
 // Appends the live count to a label — "Favorites (8)" — so the number is
-// visible before the option is picked, not just after. Falls back to the bare
+// visible before the option is picked, not just after. The count rides in its
+// own span so it can sit a size smaller than the label. Falls back to the bare
 // label if a count wasn't supplied for this value.
 function labelWithCount(label, count) {
-  return typeof count === 'number' ? `${label} (${count})` : label;
+  return (
+    <>
+      {label}
+      {typeof count === 'number' && <span className="sort-select-count"> ({count})</span>}
+    </>
+  );
 }
 
 // The sort control at the top of the filter drawer. Custom rather than a native
@@ -52,7 +59,7 @@ export default function SortSelect({ value, onChange, options, counts }) {
       >
         <span className="sort-select-value">{labelWithCount(sortLabel(value), counts?.[value])}</span>
         <span className="sort-select-chevron" aria-hidden="true">
-          <span className="material-symbols-outlined">expand_more</span>
+          <Icon name="expand_more" />
         </span>
       </button>
 
@@ -74,9 +81,7 @@ export default function SortSelect({ value, onChange, options, counts }) {
               >
                 <span>{labelWithCount(opt.label, counts?.[opt.value])}</span>
                 {selected && (
-                  <span className="material-symbols-outlined sort-select-check" aria-hidden="true">
-                    check
-                  </span>
+                  <Icon name="check" className="sort-select-check" />
                 )}
               </button>
             );

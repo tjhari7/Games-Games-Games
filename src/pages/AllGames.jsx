@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import Icon from '../components/Icon.jsx';
+import { useNavigate, useLocation, useNavigationType } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
 import FilterDrawer from '../components/FilterDrawer.jsx';
 import AlphabetIndex from '../components/AlphabetIndex.jsx';
 import { api } from '../lib/api.js';
 import { typePillColor, TYPE_TEXT_COLOR } from '../lib/typeColors.js';
-import { playersChipLabel, timeChipLabel } from '../lib/filterOptions.js';
+import { playersChipLabel, timeChipLabel, playerOptionCounts, timeOptionCounts } from '../lib/filterOptions.js';
+import { playersMatchesAny, timeMatchesAnyBucket } from '../lib/gameMatch.js';
 import { groupByLetter } from '../lib/alphabetIndex.js';
 import { fastScrollTo } from '../lib/smoothScroll.js';
 import { offsetWithinScroller } from '../lib/pageScroll.js';
@@ -31,11 +33,51 @@ const JUMP_GAP = 16;
 
 export default function AllGames() {
   const navigate = useNavigate();
-  // Opened from the ⋮ menu on Home's right edge: slides in from the right, and its
-  // back button slides it back off to the right over a Home that stays put, with
-  // the ⋮ menu open again on arrival — same as Add Game / Edit Game Types. See
-  // lib/pageSwipe.js.
-  const { startBack, swipeClass, rootProps } = useMenuOverlaySwipe();
+  // Reached from Discover's "View All Games" pill (which navigates here with
+  // `backTo: '/discover'`), this screen behaves as part of the Discover flow: it
+  // drops its management chrome — the Edit Game Types icon and the Add Game
+  // button — starts at the top of the list rather than restoring a remembered
+  // scroll position, and its Back button returns to Discover. Opened from the ⋮
+  // menu instead, none of that applies and Back reopens the menu over Home.
+  //
+  // usePageSwipe wipes `location.state` to null in a mount effect once it has
+  // read the entrance flag (lib/pageSwipe.js), so the "from Discover" fact is
+  // captured on the first render and then parked in sessionStorage. That keeps
+  // it true across a trip into a game's details and back (a POP with no state),
+  // while a fresh open from the ⋮ menu — a PUSH that carries no `backTo` — clears
+  // it again.
+  const location = useLocation();
+  const navType = useNavigationType();
+  const [arrivedFromDiscover] = useState(() => location.state?.backTo === '/discover');
+  const [initialNavType] = useState(() => navType);
+  const [fromDiscover] = useState(() => {
+    if (arrivedFromDiscover) return true;
+    if (initialNavType === 'PUSH') return false;
+    try {
+      return sessionStorage.getItem('allGames:fromDiscover') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const freshDiscoverArrival = arrivedFromDiscover;
+
+  useEffect(() => {
+    try {
+      if (fromDiscover) sessionStorage.setItem('allGames:fromDiscover', '1');
+      else sessionStorage.removeItem('allGames:fromDiscover');
+    } catch {
+      /* private mode / storage disabled — the mode just won't persist */
+    }
+  }, [fromDiscover]);
+
+  // Both entries slide in from the right over a stationary origin and slide back
+  // off to the right on Back (lib/pageSwipe.js). Only the landing differs: the
+  // Discover flow lands back on `/discover`; the ⋮-menu entry lands on Home with
+  // the menu reopened.
+  const { startBack, swipeClass, rootProps } = useMenuOverlaySwipe(
+    fromDiscover ? '/discover' : '/',
+    fromDiscover ? null : { reopenMenu: true },
+  );
   // Header, search and filter ride in one block that scrolls away downward and
   // comes back on any upward scroll. See lib/useScrollBackHeader.js.
   const { ref: headerRef, pinOpen: pinHeaderOpen, releasePin: releaseHeaderPin } = useScrollBackHeader();
@@ -85,6 +127,47 @@ export default function AllGames() {
     [games, getRating, isPlayed, isFavorite],
   );
 
+  // How many games carry each type, counted off the full catalog but narrowed
+  // by the current Players and Time selections — so the number beside a Game
+  // Type chip previews what picking that type would actually leave. It ignores
+  // the Game Type selection itself (each chip's own count shouldn't collapse
+  // when it's picked) and the search box. Shown greyed in parens in the drawer;
+  // a type that lands on 0 renders disabled there rather than just count-less.
+  // Every type is seeded to 0 so the drawer can tell "no matches" from "not
+  // computed yet"; an empty catalog (cold load) returns {} so nothing disables.
+  const playersParam = playersFilter.join(',');
+  const timeParam = timeFilter.join(',');
+  const typeCounts = useMemo(() => {
+    const all = api.getCachedGames() || games;
+    if (!all.length) return {};
+    const counts = Object.fromEntries(types.map((t) => [t.id, 0]));
+    all.forEach((g) => {
+      if (!playersMatchesAny(g.players, playersParam)) return;
+      if (!timeMatchesAnyBucket(g.time, timeParam)) return;
+      counts[g.type_id] = (counts[g.type_id] || 0) + 1;
+    });
+    return counts;
+  }, [games, types, playersParam, timeParam]);
+
+  // Players / Time options that would return nothing get disabled in the drawer
+  // rather than removed. Same base as the type counts (the warmed catalog), each
+  // group narrowed by the *other* two selections but never its own — so a
+  // picked chip never reads as 0.
+  const typeParam = typeFilter.join(',');
+  const inTypeSelection = (g) => !typeParam || typeParam.split(',').includes(g.type_id);
+  const playersCounts = useMemo(() => {
+    const all = api.getCachedGames() || games;
+    return playerOptionCounts(
+      all.filter((g) => inTypeSelection(g) && timeMatchesAnyBucket(g.time, timeParam)),
+    );
+  }, [games, typeParam, timeParam]);
+  const timeCounts = useMemo(() => {
+    const all = api.getCachedGames() || games;
+    return timeOptionCounts(
+      all.filter((g) => inTypeSelection(g) && playersMatchesAny(g.players, playersParam)),
+    );
+  }, [games, typeParam, playersParam]);
+
   const activeFilterChips = useMemo(() => {
     const chips = [];
     typeFilter.forEach((id) => {
@@ -127,7 +210,35 @@ export default function AllGames() {
   // show the unfiltered total (fetched once, unaffected by search-driven loading).
   const displayCount = activeFilterChips.length > 0 ? games.length : totalCount;
 
-  useScrollRestoration(contentReady);
+  useScrollRestoration(contentReady && !freshDiscoverArrival);
+
+  // Fresh arrival from Discover's "View All Games" pill. The device-frame
+  // scroller is shared across route changes and still holds the offset Discover
+  // was scrolled to, and useScrollRestoration would otherwise re-apply a saved
+  // one — either way the header scrolls out of view. Force the top before the
+  // first paint (so the scroll-back header never reads a hidden position), drop
+  // any saved offset, then re-assert it once the list has its full height —
+  // `contentReady` flips a beat after mount on a cold load.
+  const toPageTop = () => {
+    window.scrollTo(0, 0);
+    document.querySelector('.device-frame__scroll')?.scrollTo(0, 0);
+  };
+  useLayoutEffect(() => {
+    if (!freshDiscoverArrival) return;
+    try {
+      sessionStorage.removeItem(`scroll:${location.pathname}`);
+    } catch {
+      /* storage disabled */
+    }
+    toPageTop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freshDiscoverArrival]);
+  useEffect(() => {
+    if (!freshDiscoverArrival || !contentReady) return undefined;
+    const raf = requestAnimationFrame(toPageTop);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freshDiscoverArrival, contentReady]);
 
   function jumpToLetter(letter) {
     const el = sectionRefs.current[letter];
@@ -223,17 +334,12 @@ export default function AllGames() {
               {g.type_name}
             </span>
             {isFavorite(g.id) && (
-              <span
-                className="material-symbols-outlined game-list-item-fav-icon"
-                style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
-              >
-                favorite
-              </span>
+              <Icon name="favorite" filled className="game-list-item-fav-icon" />
             )}
           </div>
           <div className="game-list-item-actions">
             <span className="icon-btn" aria-hidden="true">
-              <span className="material-symbols-outlined">chevron_right</span>
+              <Icon name="chevron_right" />
             </span>
           </div>
         </div>
@@ -244,13 +350,13 @@ export default function AllGames() {
           <div className="game-list-item-meta">
             {g.players && (
               <span className="meta-item">
-                <span className="material-symbols-outlined">group</span>
+                <Icon name="group" />
                 {g.players}
               </span>
             )}
             {g.time && (
               <span className="meta-item">
-                <span className="material-symbols-outlined">schedule</span>
+                <Icon name="schedule" />
                 {g.time}
               </span>
             )}
@@ -268,18 +374,18 @@ export default function AllGames() {
           titleSlot={<span className="page-title-eesti">All Games</span>}
           centered
           onBack={startBack}
-          actions={
-            <button className="icon-btn all-games-types-btn" onClick={() => navigate('/types', { state: { backTo: '/games', swipeSheetUp: true } })} aria-label="Edit game types">
-              <span className="material-symbols-outlined">category</span>
+          actions={fromDiscover ? null : (
+            <button className="icon-btn all-games-types-btn" onClick={() => navigate('/types', { state: { backTo: '/games', swipeForwardFromRight: true } })} aria-label="Edit game types">
+              <Icon name="category" />
             </button>
-          }
+          )}
         />
 
         {error && <div className="error-message">{error}</div>}
 
         <div className="search-row">
           <div className="search-bar">
-            <span className="material-symbols-outlined">search</span>
+            <Icon name="search" />
             <input
               type="text"
               placeholder={displayCount != null ? `Search ${displayCount} games…` : 'Search games…'}
@@ -293,7 +399,7 @@ export default function AllGames() {
                 aria-label="Clear search"
                 type="button"
               >
-                <span className="material-symbols-outlined">close</span>
+                <Icon name="close" />
               </button>
             )}
             {search && SpeechRecognition && <span className="search-divider" />}
@@ -304,7 +410,7 @@ export default function AllGames() {
                 aria-label={listening ? 'Stop voice search' : 'Search by voice'}
                 type="button"
               >
-                <span className="material-symbols-outlined">mic</span>
+                <Icon name="mic" />
               </button>
             )}
           </div>
@@ -315,7 +421,7 @@ export default function AllGames() {
               onClick={() => setFilterOpen(true)}
               aria-label="Filter"
             >
-              <span className="material-symbols-outlined">tune</span>
+              <Icon name="tune" />
               {activeFilterChips.length > 0 && (
                 <span className="filter-badge">{activeFilterChips.length}</span>
               )}
@@ -328,12 +434,15 @@ export default function AllGames() {
         open={filterOpen}
         onClose={() => setFilterOpen(false)}
         types={types}
+        typeCounts={typeCounts}
         typeFilter={typeFilter}
         setTypeFilter={setTypeFilter}
         playersFilter={playersFilter}
         setPlayersFilter={setPlayersFilter}
         timeFilter={timeFilter}
         setTimeFilter={setTimeFilter}
+        playersCounts={playersCounts}
+        timeCounts={timeCounts}
         sort={sort}
         setSort={setSort}
         sortOptions={SORT_OPTIONS}
@@ -357,7 +466,7 @@ export default function AllGames() {
               <span className="filter-chip__prefix">Sort:</span>
               {sortLabel(sort)}
               <span className="filter-chip__x" aria-hidden="true">
-                <span className="material-symbols-outlined">close</span>
+                <Icon name="close" />
               </span>
             </button>
           )}
@@ -371,7 +480,7 @@ export default function AllGames() {
             >
               {chip.label}
               <span className="filter-chip__x" aria-hidden="true">
-                <span className="material-symbols-outlined">close</span>
+                <Icon name="close" />
               </span>
             </button>
           ))}
@@ -424,10 +533,12 @@ export default function AllGames() {
         <AlphabetIndex presentLetters={presentLetters} onSelect={jumpToLetter} />
       )}
 
-      <button className="fab" onClick={() => navigate('/games/new', { state: { backTo: '/games', swipeSheetUp: true } })} aria-label="Add Game">
-        <img src={addIcon} alt="" className="fab-add-icon" />
-        ADD GAME
-      </button>
+      {!fromDiscover && (
+        <button className="fab" onClick={() => navigate('/games/new', { state: { backTo: '/games', swipeForwardFromRight: true } })} aria-label="Add Game">
+          <img src={addIcon} alt="" className="fab-add-icon" />
+          ADD GAME
+        </button>
+      )}
     </div>
   );
 }

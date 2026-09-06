@@ -27,8 +27,11 @@
     "serverless-http": "^4.0.0"
   },
   "devDependencies": {
+    "@material-symbols/svg-400": "^0.47.1",
+    "@material-symbols/svg-500": "^0.47.1",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^10.0.4",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vite-plugin-svgr": "^5.2.0"
   }
 }

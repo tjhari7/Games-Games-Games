@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Icon from '../components/Icon.jsx';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
 import FilterDrawer from '../components/FilterDrawer.jsx';
@@ -11,13 +12,13 @@ import { useLoaderGate } from '../lib/useLoaderGate.js';
 import GamesLoader from '../components/GamesLoader.jsx';
 import { TYPE_ICONS } from '../lib/gameTypes.js';
 import taskmasterSingleLogo from '../assets/TaskMaster_Single_01.svg';
-import { playersChipLabel, timeChipLabel } from '../lib/filterOptions.js';
+import { playersChipLabel, timeChipLabel, playerOptionCounts, timeOptionCounts } from '../lib/filterOptions.js';
+import { playersMatchesAny, timeMatchesAnyBucket } from '../lib/gameMatch.js';
 import { groupByLetter } from '../lib/alphabetIndex.js';
 import { scrollPageTo } from '../lib/pageScroll.js';
 import { useScrollRestoration } from '../lib/useScrollRestoration.js';
 import { useScrollBackHeader } from '../lib/useScrollBackHeader.js';
-import { useHorizontalSwipeBack, useDiscoverRiseSwipe } from '../lib/pageSwipe.js';
-import DiscoverRiseBackdrop from '../components/DiscoverRiseBackdrop.jsx';
+import { useMenuOverlaySwipe } from '../lib/pageSwipe.js';
 import { CARD_VIEW, useGameViewMode } from '../lib/useGameViewMode.js';
 import { useFavoriteGames } from '../lib/useFavoriteGames.js';
 import { useGameRatings } from '../lib/useGameRatings.js';
@@ -31,20 +32,15 @@ const SpeechRecognition =
 export default function CategoryGames() {
   const navigate = useNavigate();
   const location = useLocation();
-  // Sits to Home's left, so it comes in from the left — but unlike the menu
-  // and favorites, it's opened from the Game Types sheet, so back returns
-  // there instead of all the way to Home. Captured at mount — the swipe hook
-  // wipes the history state a tick later. See lib/pageSwipe.js.
+  // Opened from the Game Types sheet or from Discover's type tiles — either way
+  // it slides in from the right over a stationary origin, and on the way back it
+  // slides straight off to the right while that origin (the sheet, or Discover)
+  // sits still underneath, revealed as though it had only been covered up. The
+  // same motion as the pages launched from Home's ⋮ menu. `backTo` names where
+  // back lands; captured at mount — the swipe hook wipes the history state a tick
+  // later. See lib/pageSwipe.js.
   const [backTo] = useState(() => location.state?.backTo || '/game-types');
-  // Opened from Discover's type tiles instead: it rises up from the bottom over
-  // a copy of Discover and drops back down onto it, like the bundle and
-  // community-game pages. Both swipe hooks are called (hooks can't be
-  // conditional); only the matching one's controls are used.
-  const [fromDiscover] = useState(() => Boolean(location.state?.discoverRise));
-  const horizontalSwipe = useHorizontalSwipeBack(backTo);
-  const riseSwipe = useDiscoverRiseSwipe('/discover');
-  const { startBack, swipeClass, rootProps } = fromDiscover ? riseSwipe : horizontalSwipe;
-  const rising = fromDiscover && riseSwipe.rising;
+  const { startBack, swipeClass, rootProps } = useMenuOverlaySwipe(backTo);
   // Header, search and filter ride in one block that scrolls away downward and
   // comes back on any upward scroll. See lib/useScrollBackHeader.js.
   const { ref: headerRef } = useScrollBackHeader();
@@ -109,6 +105,32 @@ export default function CategoryGames() {
       ? taskmasterSingleLogo
       : TYPE_ICONS[type.name]
     : null;
+
+  // Players / Time options that would return nothing for this type get disabled
+  // in the drawer rather than removed. Counted off this type's full slice of
+  // the warmed catalog — each group narrowed by the *other* group's current
+  // pick, never its own. Skipped entirely until that slice is actually in the
+  // cache, so a cold load never disables a real option.
+  const playersParam = playersFilter.join(',');
+  const timeParam = timeFilter.join(',');
+  const typeCatalog = useMemo(
+    () => (api.getCachedGames() || []).filter((g) => g.type_id === typeId),
+    [typeId, games],
+  );
+  const playersCounts = useMemo(
+    () =>
+      typeCatalog.length
+        ? playerOptionCounts(typeCatalog.filter((g) => timeMatchesAnyBucket(g.time, timeParam)))
+        : {},
+    [typeCatalog, timeParam],
+  );
+  const timeCounts = useMemo(
+    () =>
+      typeCatalog.length
+        ? timeOptionCounts(typeCatalog.filter((g) => playersMatchesAny(g.players, playersParam)))
+        : {},
+    [typeCatalog, playersParam],
+  );
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
@@ -236,17 +258,12 @@ export default function CategoryGames() {
               {g.type_name}
             </span>
             {isFavorite(g.id) && (
-              <span
-                className="material-symbols-outlined game-list-item-fav-icon"
-                style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
-              >
-                favorite
-              </span>
+              <Icon name="favorite" filled className="game-list-item-fav-icon" />
             )}
           </div>
           <div className="game-list-item-actions">
             <span className="icon-btn" aria-hidden="true">
-              <span className="material-symbols-outlined">chevron_right</span>
+              <Icon name="chevron_right" />
             </span>
           </div>
         </div>
@@ -257,13 +274,13 @@ export default function CategoryGames() {
           <div className="game-list-item-meta">
             {g.players && (
               <span className="meta-item">
-                <span className="material-symbols-outlined">group</span>
+                <Icon name="group" />
                 {g.players}
               </span>
             )}
             {g.time && (
               <span className="meta-item">
-                <span className="material-symbols-outlined">schedule</span>
+                <Icon name="schedule" />
                 {g.time}
               </span>
             )}
@@ -275,7 +292,6 @@ export default function CategoryGames() {
 
   return (
     <div className={`page${swipeClass}${isHeroType ? ' category-hero-page' : ''}`} {...rootProps}>
-      {rising && <DiscoverRiseBackdrop />}
       <div
         className={`scroll-back-header${isHeroType ? ' category-hero-header' : ''}${isHeroType && cardView ? ' category-hero-header-card' : ''}`}
         ref={headerRef}
@@ -305,7 +321,7 @@ export default function CategoryGames() {
         {!cardView && (
           <div className="search-row">
             <div className="search-bar">
-              <span className="material-symbols-outlined">search</span>
+              <Icon name="search" />
               <input
                 type="text"
                 placeholder={
@@ -323,7 +339,7 @@ export default function CategoryGames() {
                   aria-label="Clear search"
                   type="button"
                 >
-                  <span className="material-symbols-outlined">close</span>
+                  <Icon name="close" />
                 </button>
               )}
               {search && SpeechRecognition && <span className="search-divider" />}
@@ -334,7 +350,7 @@ export default function CategoryGames() {
                   aria-label={listening ? 'Stop voice search' : 'Search by voice'}
                   type="button"
                 >
-                  <span className="material-symbols-outlined">mic</span>
+                  <Icon name="mic" />
                 </button>
               )}
             </div>
@@ -345,7 +361,7 @@ export default function CategoryGames() {
                 onClick={() => setFilterOpen(true)}
                 aria-label="Filter"
               >
-                <span className="material-symbols-outlined">tune</span>
+                <Icon name="tune" />
                 {activeFilterChips.length > 0 && (
                   <span className="filter-badge">{activeFilterChips.length}</span>
                 )}
@@ -366,6 +382,8 @@ export default function CategoryGames() {
         setPlayersFilter={setPlayersFilter}
         timeFilter={timeFilter}
         setTimeFilter={setTimeFilter}
+        playersCounts={playersCounts}
+        timeCounts={timeCounts}
         sort={sort}
         setSort={setSort}
         sortOptions={SORT_OPTIONS}
@@ -389,7 +407,7 @@ export default function CategoryGames() {
               <span className="filter-chip__prefix">Sort:</span>
               {sortLabel(sort)}
               <span className="filter-chip__x" aria-hidden="true">
-                <span className="material-symbols-outlined">close</span>
+                <Icon name="close" />
               </span>
             </button>
           )}
@@ -403,7 +421,7 @@ export default function CategoryGames() {
             >
               {chip.label}
               <span className="filter-chip__x" aria-hidden="true">
-                <span className="material-symbols-outlined">close</span>
+                <Icon name="close" />
               </span>
             </button>
           ))}

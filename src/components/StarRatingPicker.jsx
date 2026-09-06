@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import Icon from './Icon.jsx';
 
 // Interactive 5-star picker, half-star aware: tapping the left half of a star
 // sets a half rating, the right half a full one. Also drag-aware — press down
@@ -72,7 +73,7 @@ export default function StarRatingPicker({ value, onChange, onBack }) {
         onClick={onBack}
         aria-label="Back to actions"
       >
-        <span className="material-symbols-outlined">chevron_left</span>
+        <Icon name="chevron_left" />
       </button>
       <div
         className="card-carousel__rating-stars"
@@ -84,7 +85,7 @@ export default function StarRatingPicker({ value, onChange, onBack }) {
       >
         {STAR_INDICES.map((i) => {
           const filled = value - i;
-          const icon = filled >= 1 ? 'star' : filled >= 0.5 ? 'star_half' : 'star';
+          const icon = filled >= 0.5 && filled < 1 ? 'star_half' : 'star';
           const className = filled >= 1 ? 'is-filled' : filled >= 0.5 ? 'is-half' : '';
           return (
             <button
@@ -94,7 +95,7 @@ export default function StarRatingPicker({ value, onChange, onBack }) {
               onClick={(e) => pick(e, i, onChange)}
               aria-label={`Rate ${i + 1} star${i === 0 ? '' : 's'}`}
             >
-              <span className="material-symbols-outlined">{icon}</span>
+              <Icon name={icon} filled={filled >= 1} />
             </button>
           );
         })}

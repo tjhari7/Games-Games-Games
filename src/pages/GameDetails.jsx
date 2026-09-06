@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Icon from '../components/Icon.jsx';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useLoaderGate } from '../lib/useLoaderGate.js';
@@ -31,12 +32,12 @@ function DetailsHeader({ onBack, onEdit }) {
   return (
     <div className="page-header page-header-tight">
       <button className="back-link" onClick={onBack} aria-label="Back">
-        <span className="material-symbols-outlined">arrow_back</span>
+        <Icon name="arrow_back" />
       </button>
       {onEdit && (
         <div className="details-header-actions">
           <button className="icon-btn icon-btn-label" onClick={onEdit}>
-            <span className="material-symbols-outlined">edit</span>
+            <Icon name="edit" />
             Edit
           </button>
         </div>
@@ -104,12 +105,7 @@ export default function GameDetails() {
             {game.type_name}
           </span>
           {isFavorite(game.id) && (
-            <span
-              className="material-symbols-outlined carousel-card__fav-icon"
-              style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
-            >
-              favorite
-            </span>
+            <Icon name="favorite" filled className="carousel-card__fav-icon" />
           )}
         </div>
         <h1 className="details-title">{game.title}</h1>
@@ -118,21 +114,21 @@ export default function GameDetails() {
 
         <div className="details-stats">
           <div className="stat-row">
-            <span className="material-symbols-outlined">group</span>
+            <Icon name="group" />
             <div>
               <div className="stat-row-label">Players</div>
               <div className="stat-row-value">{naIfEmpty(game.players)}</div>
             </div>
           </div>
           <div className="stat-row">
-            <span className="material-symbols-outlined">schedule</span>
+            <Icon name="schedule" />
             <div>
               <div className="stat-row-label">Time</div>
               <div className="stat-row-value">{naIfEmpty(game.time)}</div>
             </div>
           </div>
           <div className="stat-row">
-            <span className="material-symbols-outlined">inventory_2</span>
+            <Icon name="inventory_2" />
             <div>
               <div className="stat-row-label">Materials</div>
               <div className="stat-row-value">{naIfEmpty(game.materials)}</div>
@@ -169,7 +165,7 @@ export default function GameDetails() {
               onClick={() => togglePlayed(game.id)}
               aria-label="Mark as played"
             >
-              <span className="material-symbols-outlined">casino</span>
+              <Icon name="casino" filled={isPlayed(game.id)} />
               <span className="card-carousel__action-label">Played</span>
             </button>
             <button
@@ -179,7 +175,7 @@ export default function GameDetails() {
               onClick={() => toggleFavorite(game.id)}
               aria-label="Favorite"
             >
-              <span className="material-symbols-outlined">favorite</span>
+              <Icon name="favorite" filled={isFavorite(game.id)} />
               <span className="card-carousel__action-label">Favorite</span>
             </button>
             <button
@@ -188,7 +184,7 @@ export default function GameDetails() {
               onClick={() => setRatingMode(true)}
               aria-label="Rating"
             >
-              <span className="material-symbols-outlined">star</span>
+              <Icon name="star" filled={getRating(game.id) > 0} />
               <span className="card-carousel__action-text">
                 <span className="card-carousel__action-label">Rating</span>
                 {getRating(game.id) > 0 && (
@@ -202,7 +198,7 @@ export default function GameDetails() {
               onClick={() => shareGame(game)}
               aria-label="Share"
             >
-              <span className="material-symbols-outlined">ios_share</span>
+              <Icon name="ios_share" />
               <span className="card-carousel__action-label">Share</span>
             </button>
           </div>

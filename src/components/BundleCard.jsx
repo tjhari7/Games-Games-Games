@@ -1,3 +1,5 @@
+import Icon from './Icon.jsx';
+import { formatSaves } from '../lib/community.js';
 // A compact card for the horizontal Bundles rail on Discover. Wears the
 // bundle's bright accent as its fill with dark ink, the way the category hero
 // headers do. The root is a div, not a button, so the Save control can be a real
@@ -19,11 +21,11 @@ export default function BundleCard({ bundle, count, onOpen, isSaved, onToggleSav
     >
       <span className="bundle-card__count">{count} {count === 1 ? 'game' : 'games'}</span>
       <span className="bundle-card__chevron" aria-hidden="true">
-        <span className="material-symbols-outlined">chevron_right</span>
+        <Icon name="chevron_right" />
       </span>
       <span className="bundle-card__title">{bundle.title}</span>
       <span className="bundle-card__blurb">{bundle.blurb}</span>
-      {(bundle.curator || onToggleSave) && (
+      {(bundle.saves != null || onToggleSave) && (
         <div className="bundle-card__footer">
           {onToggleSave && (
             <button
@@ -36,11 +38,11 @@ export default function BundleCard({ bundle, count, onOpen, isSaved, onToggleSav
                 onToggleSave();
               }}
             >
-              <span className="material-symbols-outlined">{isSaved ? 'check' : 'add'}</span>
+              <Icon name={isSaved ? 'bookmark_check' : 'bookmark'} filled={isSaved} />
               {isSaved ? 'Saved' : 'Save'}
             </button>
           )}
-          {bundle.curator && <span className="bundle-card__curator">{bundle.curator}</span>}
+          {bundle.saves != null && <span className="bundle-card__saves">{formatSaves(bundle.saves)} saves</span>}
         </div>
       )}
     </div>

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import Icon from './Icon.jsx';
 import { typePillColor, TYPE_TEXT_COLOR } from '../lib/typeColors.js';
 import { useFavoriteGames } from '../lib/useFavoriteGames.js';
 import { useMarkedPlayed } from '../lib/useMarkedPlayed.js';
 import { useGameRatings } from '../lib/useGameRatings.js';
 import { shareGame } from '../lib/shareGame.js';
+import { prefersReducedMotion } from '../lib/pageSwipe.js';
 import StarRating from './StarRating.jsx';
 import StarRatingPicker from './StarRatingPicker.jsx';
 
@@ -29,6 +31,38 @@ const SETTLE_MS = 120;
 // Slack before a mouse drag takes over, so a jittery click still opens the card.
 const DRAG_LOCK = 6;
 
+// The draw page's shuffle button doesn't step one card over — it spins. Each tap
+// flies the deck past a fresh random number of cards in this inclusive range,
+// then decelerates onto whatever it lands on.
+const SPIN_MIN_CARDS = 3;
+const SPIN_MAX_CARDS = 6;
+// Total travel time for that spin, whatever the card count. ~300ms is a fast,
+// slot-machine-ish blur across the high end of the range — bump this if it
+// reads as too frantic.
+const SPIN_MS = 300;
+
+// y for x on cubic-bezier(0.77, 0, 0.18, 1) — a snappy ease-in-out: creeps off
+// rest, accelerates through the middle, settles hard onto the landing card. CSS
+// bezier strings don't apply to a JS-driven scrollLeft tween, so solve it here:
+// Newton's method on the x component (a handful of iterations is plenty at
+// 60fps), then evaluate the matching y.
+function spinEase(x) {
+  const cx = 3 * 0.77;
+  const bx = 3 * (0.18 - 0.77) - cx;
+  const ax = 1 - cx - bx;
+  const cy = 3 * 0;
+  const by = 3 * (1 - 0) - cy;
+  const ay = 1 - cy - by;
+  let t = x;
+  for (let i = 0; i < 5; i++) {
+    const dx = ((ax * t + bx) * t + cx) * t - x;
+    const d = (3 * ax * t + 2 * bx) * t + cx;
+    if (Math.abs(dx) < 1e-4 || d === 0) break;
+    t -= dx / d;
+  }
+  return ((ay * t + by) * t + cy) * t;
+}
+
 function naIfEmpty(value) {
   return value && value.trim() ? value : 'N/A';
 }
@@ -44,12 +78,7 @@ function CarouselCard({ game, rating, favorite, onOpen, onEdit }) {
             {game.type_name}
           </span>
           {favorite && (
-            <span
-              className="material-symbols-outlined carousel-card__fav-icon"
-              style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}
-            >
-              favorite
-            </span>
+            <Icon name="favorite" filled className="carousel-card__fav-icon" />
           )}
         </div>
         <button
@@ -61,7 +90,7 @@ function CarouselCard({ game, rating, favorite, onOpen, onEdit }) {
           }}
           aria-label={`Edit ${game.title}`}
         >
-          <span className="material-symbols-outlined">chevron_right</span>
+          <Icon name="chevron_right" />
         </button>
       </div>
 
@@ -77,21 +106,21 @@ function CarouselCard({ game, rating, favorite, onOpen, onEdit }) {
           Materials, the only one that runs long, takes the row below. */}
       <div className="details-stats carousel-card__stats">
         <div className="stat-row">
-          <span className="material-symbols-outlined">group</span>
+          <Icon name="group" />
           <div>
             <div className="stat-row-label">Players</div>
             <div className="stat-row-value">{naIfEmpty(game.players)}</div>
           </div>
         </div>
         <div className="stat-row">
-          <span className="material-symbols-outlined">schedule</span>
+          <Icon name="schedule" />
           <div>
             <div className="stat-row-label">Time</div>
             <div className="stat-row-value">{naIfEmpty(game.time)}</div>
           </div>
         </div>
         <div className="stat-row stat-row--wide">
-          <span className="material-symbols-outlined">inventory_2</span>
+          <Icon name="inventory_2" />
           <div>
             <div className="stat-row-label">Materials</div>
             <div className="stat-row-value">{naIfEmpty(game.materials)}</div>
@@ -103,8 +132,10 @@ function CarouselCard({ game, rating, favorite, onOpen, onEdit }) {
 }
 
 // `controls`, when passed, is a ref the carousel hangs its imperative moves off
-// — currently just `next()`, so a button outside the track (the draw page's
-// shuffle) can advance it with the same snap a swipe gets.
+// — currently just `spin()`, which the draw page's shuffle button calls: it
+// flies the deck past a random handful of cards and eases onto a new one, a
+// hand-driven scrollLeft tween rather than a native snap. See `spinEase` /
+// `SPIN_MS` above.
 //
 // `loading` renders the whole shell — one blank card and a full, inert actions
 // bar — before any games are in hand. It exists so the bar can mount on the
@@ -128,6 +159,14 @@ export default function GameCardCarousel({ games, onOpen, onEdit, controls, load
   const teleporting = useRef(false);
   const drag = useRef(null);
   const suppressClick = useRef(false);
+  // The id of the in-flight shuffle-spin rAF, or 0 when nothing is spinning. A
+  // second tap mid-spin reads this and bails; unmount reads it to cancel.
+  const spinRef = useRef(0);
+  // Backstop timer for the same spin: if rAF stalls (a backgrounded tab pauses
+  // it mid-flight), this fires a little after the spin should have ended and
+  // snaps straight to the landing card, so the track never stays frozen with
+  // snapping still off.
+  const spinFallback = useRef(0);
 
   const slides = wraps ? [games[games.length - 1], ...games, games[0]] : games;
   const gameIndex = wraps ? (slideIndex - 1 + games.length) % games.length : slideIndex;
@@ -223,6 +262,10 @@ export default function GameCardCarousel({ games, onOpen, onEdit, controls, load
     const track = trackRef.current;
     if (!track) return undefined;
     const observer = new ResizeObserver(() => {
+      // A shuffle spin is already hand-driving scrollLeft; re-centring on top of
+      // it would yank the track mid-flight. The spin lands on a snap point on
+      // its own.
+      if (spinRef.current) return;
       teleporting.current = true;
       scrollToSlide(slideIndexRef.current, 'auto');
       setTimeout(() => {
@@ -236,20 +279,88 @@ export default function GameCardCarousel({ games, onOpen, onEdit, controls, load
   useEffect(() => {
     if (!controls) return undefined;
     controls.current = {
-      next: () => {
-        const last = slides.length - 1;
-        const i = slideIndexRef.current + 1;
-        // Past the end without wrapping there is nowhere to go; with wrapping
-        // the trailing clone is a valid stop, and settling teleports off it.
-        scrollToSlide(i > last ? (wraps ? last : 0) : i, 'smooth');
+      // Fly past a random handful of cards and ease onto a new one. The order is
+      // already shuffled, so which card that is doesn't matter — the point is
+      // the motion, a draw rather than a step.
+      spin: () => {
+        const track = trackRef.current;
+        // One-card deck (no wrap) has nowhere to spin, and a tap while a spin is
+        // already running is ignored rather than stacked.
+        if (!track || !wraps || spinRef.current) return;
+
+        const cards =
+          SPIN_MIN_CARDS + Math.floor(Math.random() * (SPIN_MAX_CARDS - SPIN_MIN_CARDS + 1));
+        const finalIndex =
+          firstReal + ((slideIndexRef.current - firstReal + cards) % games.length);
+
+        // Reduced motion: keep the outcome (a fresh card), drop the fly-through.
+        if (prefersReducedMotion()) {
+          scrollToSlide(finalIndex, 'auto');
+          return;
+        }
+
+        const { base, stride } = metrics();
+        if (!stride) {
+          // Track not measured yet — just step one card so the tap isn't inert.
+          scrollToSlide(finalIndex, 'smooth');
+          return;
+        }
+
+        // Hand-drive scrollLeft: snapping off for the flight (same hook the
+        // mouse drag uses), and every frame's scroll event ignored the way a
+        // teleport's is. The track stays inside the real cards the whole way —
+        // the modulo folds it back over one full set rather than ever landing on
+        // a wrap clone — so there's nothing to see at the seam.
+        const realStart = base + stride * firstReal;
+        const span = stride * games.length;
+        const startLeft = track.scrollLeft;
+        const distance = stride * cards;
+        const t0 = performance.now();
+
+        teleporting.current = true;
+        track.classList.add('is-dragging');
+
+        // Land on the snap point and put snapping back. Idempotent — whichever of
+        // the final frame or the backstop timer gets here first wins, the other
+        // finds `spinRef` already cleared and does nothing.
+        const settle = () => {
+          if (!spinRef.current) return;
+          cancelAnimationFrame(spinRef.current);
+          clearTimeout(spinFallback.current);
+          spinRef.current = 0;
+          spinFallback.current = 0;
+          track.classList.remove('is-dragging');
+          scrollToSlide(finalIndex, 'auto');
+          setTimeout(() => {
+            teleporting.current = false;
+          }, 0);
+        };
+
+        const frame = (now) => {
+          const t = Math.min((now - t0) / SPIN_MS, 1);
+          const virtual = startLeft + distance * spinEase(t);
+          track.scrollLeft = realStart + (((virtual - realStart) % span) + span) % span;
+          if (t < 1) spinRef.current = requestAnimationFrame(frame);
+          else settle();
+        };
+
+        spinRef.current = requestAnimationFrame(frame);
+        spinFallback.current = setTimeout(settle, SPIN_MS + 250);
       },
     };
     return () => {
       controls.current = null;
     };
-  }, [controls, scrollToSlide, slides.length, wraps]);
+  }, [controls, games.length, firstReal, metrics, scrollToSlide, wraps]);
 
-  useEffect(() => () => clearTimeout(settleTimer.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(settleTimer.current);
+      clearTimeout(spinFallback.current);
+      if (spinRef.current) cancelAnimationFrame(spinRef.current);
+    },
+    [],
+  );
 
   /* ---- mouse drag ------------------------------------------------------ */
 
@@ -378,7 +489,7 @@ export default function GameCardCarousel({ games, onOpen, onEdit, controls, load
               disabled={showShell}
               aria-label="Mark as played"
             >
-              <span className="material-symbols-outlined">casino</span>
+              <Icon name="casino" filled={!!currentGame && isPlayed(currentGame.id)} />
               <span className="card-carousel__action-label">Played</span>
             </button>
             <button
@@ -389,7 +500,7 @@ export default function GameCardCarousel({ games, onOpen, onEdit, controls, load
               disabled={showShell}
               aria-label="Favorite"
             >
-              <span className="material-symbols-outlined">favorite</span>
+              <Icon name="favorite" filled={!!currentGame && isFavorite(currentGame.id)} />
               <span className="card-carousel__action-label">Favorite</span>
             </button>
             <button
@@ -399,7 +510,7 @@ export default function GameCardCarousel({ games, onOpen, onEdit, controls, load
               disabled={showShell}
               aria-label="Rating"
             >
-              <span className="material-symbols-outlined">star</span>
+              <Icon name="star" filled={!!currentGame && getRating(currentGame.id) > 0} />
               <span className="card-carousel__action-text">
                 <span className="card-carousel__action-label">Rating</span>
                 {currentGame && getRating(currentGame.id) > 0 && (
@@ -414,7 +525,7 @@ export default function GameCardCarousel({ games, onOpen, onEdit, controls, load
               disabled={showShell}
               aria-label="Share"
             >
-              <span className="material-symbols-outlined">ios_share</span>
+              <Icon name="ios_share" />
               <span className="card-carousel__action-label">Share</span>
             </button>
           </div>

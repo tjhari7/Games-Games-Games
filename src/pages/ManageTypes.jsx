@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import Icon from '../components/Icon.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLoaderGate } from '../lib/useLoaderGate.js';
 import GamesLoader from '../components/GamesLoader.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import { api } from '../lib/api.js';
-import { useSheetOverlaySwipe } from '../lib/pageSwipe.js';
+import { useMenuOverlaySwipe } from '../lib/pageSwipe.js';
 import { generateDefaultTypeColors } from '../lib/colors.js';
 import addIcon from '../assets/Add_Icon.svg';
 
@@ -46,18 +47,21 @@ function TypeEditor({ initial, onSave, onCancel, saving }) {
 export default function ManageTypes() {
   const navigate = useNavigate();
   const location = useLocation();
-  // Reached as a bottom sheet from the All Games header (backTo '/games') or the
-  // Home ⋮ menu (backTo '/', reopenMenu): it rose from below over that origin,
-  // and Back drops it straight back down to reveal it — retracing that step
+  // Reached from the All Games header (backTo '/games') or the Home ⋮ menu
+  // (backTo '/', reopenMenu): it slides in from the right over that origin, and
+  // Back slides it back off to the right to reveal it — retracing that step
   // rather than always dropping to Home, and reopening the ⋮ drawer when the
-  // origin is Home. A direct visit (no swipeSheetUp) just navigates to backTo.
-  // All three facts are frozen at mount because the swipe hook clears
+  // origin is Home. A direct visit (no swipeForwardFromRight) just navigates to
+  // backTo. All three facts are frozen at mount because the swipe hook clears
   // location.state once the entrance has been read.
-  const [arrivedAsSheet] = useState(() => Boolean(location.state?.swipeSheetUp));
+  const [arrivedViaMenu] = useState(() => Boolean(location.state?.swipeForwardFromRight));
   const [reopenMenu] = useState(() => Boolean(location.state?.reopenMenu));
   const [backTo] = useState(() => location.state?.backTo ?? '/');
-  const { startBack, swipeClass, rootProps } = useSheetOverlaySwipe(backTo, reopenMenu);
-  const goBack = () => (arrivedAsSheet ? startBack() : navigate(backTo));
+  const { startBack, swipeClass, rootProps } = useMenuOverlaySwipe(
+    backTo,
+    reopenMenu ? { reopenMenu: true } : null,
+  );
+  const goBack = () => (arrivedViaMenu ? startBack() : navigate(backTo));
 
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -160,7 +164,7 @@ export default function ManageTypes() {
                   {t.protected && <span className="protected-badge">Protected</span>}
                   <div className="type-list-item-actions">
                     <button className="icon-btn" onClick={() => setEditingId(t.id)} aria-label="Edit">
-                      <span className="material-symbols-outlined">edit</span>
+                      <Icon name="edit" />
                     </button>
                     {!t.protected && (
                       <button
@@ -168,7 +172,7 @@ export default function ManageTypes() {
                         onClick={() => setDeleteTarget(t)}
                         aria-label="Delete"
                       >
-                        <span className="material-symbols-outlined">delete</span>
+                        <Icon name="delete" />
                       </button>
                     )}
                   </div>

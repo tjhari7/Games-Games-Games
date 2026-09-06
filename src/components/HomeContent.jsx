@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import Icon from './Icon.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, useMotionValue, useSpring } from 'motion/react';
 import KebabMenu from './KebabMenu.jsx';
 import { ALL_TYPE_ORDER, TYPE_TOSS_ICONS, TYPE_TOSS_SPIN, TOSS_SPIN_DEFAULT } from '../lib/gameTypes.js';
 import { api } from '../lib/api.js';
+import { captureRiseSnapshot } from '../lib/riseSnapshot.js';
 import g1 from '../assets/G1.svg';
 import a1 from '../assets/A1.svg';
 import m1 from '../assets/M1.svg';
@@ -493,12 +495,12 @@ export default function HomeContent({ onGo = NOOP }) {
       <div className="home">
         <div className="home-topbar home-topbar-left">
           <button className="icon-btn" onClick={() => onGo('/favorites', 'horizontal')} aria-label="View favorite games">
-            <span className="material-symbols-outlined home-fav-icon">favorite</span>
+            <Icon name="favorite" className="home-fav-icon" />
           </button>
         </div>
         <div className="home-topbar">
           <button className="icon-btn" onClick={() => setMenuOpen(true)} aria-label="More options">
-            <span className="material-symbols-outlined">menu</span>
+            <Icon name="menu" />
           </button>
         </div>
 
@@ -543,7 +545,13 @@ export default function HomeContent({ onGo = NOOP }) {
           ))}
         </div>
 
-        <button className="btn btn-neutral home-play-btn" onClick={() => onGo('/random', 'horizontal')}>
+        <button
+          className="btn btn-neutral home-play-btn"
+          onClick={() => {
+            captureRiseSnapshot();
+            navigate('/random', { state: { discoverRise: true } });
+          }}
+        >
           Play A Game
         </button>
 
@@ -556,18 +564,17 @@ export default function HomeContent({ onGo = NOOP }) {
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         items={[
-          // View All Games and Discover slide in from the right over the menu and
-          // come back the same way — the page slides off to the right over a Home
-          // that stays put, with this ⋮ menu open again on arrival; their own
-          // back button (useMenuOverlaySwipe) is what reopens the menu, so they
-          // only need the entrance flag here. Add Game and Edit Game Types
-          // instead rise from the bottom as a sheet (swipeSheetUp) and drop back
-          // down on close; they pass `backTo` / `reopenMenu` because they can be
-          // reached from All Games too and read those to decide where Back lands.
+          // All four slide in from the right over the menu and come back the same
+          // way — the page slides off to the right over a Home that stays put,
+          // with this ⋮ menu open again on arrival (useMenuOverlaySwipe). View
+          // All Games and Discover reach Back's destination the same way every
+          // time, so they only need the entrance flag. Add Game and Edit Game
+          // Types can also be opened from All Games, so they pass `backTo` /
+          // `reopenMenu` for the page to decide where Back lands.
           { label: 'View All Games', icon: 'list', onClick: () => navigate('/games', { state: { swipeForwardFromRight: true } }) },
-          { label: 'Add Game', icon: 'add', onClick: () => navigate('/games/new', { state: { backTo: '/', reopenMenu: true, swipeSheetUp: true } }) },
+          { label: 'Add Game', icon: 'add', onClick: () => navigate('/games/new', { state: { backTo: '/', reopenMenu: true, swipeForwardFromRight: true } }) },
           { label: 'Discover Games', icon: 'travel_explore', onClick: () => navigate('/discover', { state: { swipeForwardFromRight: true } }) },
-          { label: 'Edit Game Types', icon: 'category', onClick: () => navigate('/types', { state: { backTo: '/', reopenMenu: true, swipeSheetUp: true } }) },
+          { label: 'Edit Game Types', icon: 'category', onClick: () => navigate('/types', { state: { backTo: '/', reopenMenu: true, swipeForwardFromRight: true } }) },
         ]}
       />
     </>

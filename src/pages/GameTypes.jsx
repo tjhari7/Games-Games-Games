@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Icon from '../components/Icon.jsx';
 import { flushSync } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
@@ -201,8 +202,9 @@ export default function GameTypes() {
   // The sheet sits below Home on the vertical strip: it rises from the bottom
   // as Home slides off the top. Closing is handled by the strip below, which
   // brings Home back down over the top of the departing sheet.
-  const { startForward, swipeClass, rootProps } = useSwipeToHome();
+  const { swipeClass, rootProps } = useSwipeToHome();
   const { pageRef, sheetRef, behindRef, revealing, homeBack, close, grabProps } = useSheetStrip();
+  const navigate = useNavigate();
 
   // Seed from the in-memory cache so arriving from Home renders the full grid
   // immediately rather than animating a sheet of skeletons into place.
@@ -281,9 +283,10 @@ export default function GameTypes() {
                     className="btn-tertiary"
                     style={{ background: typePillColor(t.name, t.bg), color: TYPE_TEXT_COLOR }}
                     onClick={() =>
-                      t.id === FAVORITES_TILE.id
-                        ? startForward('/favorites', 'horizontal', { backTo: '/game-types' })
-                        : startForward(`/games/type/${t.id}`, 'horizontal')
+                      navigate(
+                        t.id === FAVORITES_TILE.id ? '/favorites' : `/games/type/${t.id}`,
+                        { state: { swipeForwardFromRight: true, backTo: '/game-types' } },
+                      )
                     }
                   >
                     {TYPE_ICONS[t.name] ? (
@@ -307,7 +310,7 @@ export default function GameTypes() {
         </div>
 
         <button className="sheet-close" onClick={close} aria-label="Close game types">
-          <span className="material-symbols-outlined">close</span>
+          <Icon name="close" />
         </button>
       </div>
     </div>

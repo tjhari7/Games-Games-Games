@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import Icon from './Icon.jsx';
 
 // `onBack` takes over the button entirely, for pages that animate on the way
 // out and so have to run the navigation themselves once the swipe lands.
@@ -21,7 +22,7 @@ export default function PageHeader({
     <div className={`page-header ${centered ? 'page-header-centered' : ''} ${tight ? 'page-header-tight' : ''}`}>
       {!hideBack && (
         <button className="back-link" onClick={goBack} aria-label="Back">
-          <span className="material-symbols-outlined">arrow_back</span>
+          <Icon name="arrow_back" />
         </button>
       )}
       <h1 className="page-title">{titleSlot || title}</h1>

@@ -118,9 +118,11 @@ button {
   white-space: nowrap;
 }
 
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+.icon {
   font-size: 20px;
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
   vertical-align: middle;
   line-height: 1;
 }
@@ -321,25 +323,49 @@ button {
   }
 }
 
-/* The Discover backdrop: pinned to the destination's box, behind everything,
-   inert. Clipped so the copy can't add its own scrollbars, and its home-page
-   die toss is stilled the same way the Game Types sheet stills it. */
+/* The frozen still of the screen a rising page was opened from — Discover's own
+   copy of itself, or (for Play A Game / Add Game / Edit Game Types) a snapshot
+   clone of the framed view, ⋮ menu and list scroll position and all. Behind
+   everything, inert. Pinned to the frame with `fixed`, not to the rising page's
+   box: that page can be a tall form and can mount already scrolled, and the
+   still must always be exactly one frame, aligned to the frame's top-left. Both
+   the Discover copy and the snapshot bring their own `.page`, so this box
+   carries no gutter of its own — the content inside lands exactly where the real
+   screen draws it. Clipped so the copy can't add its own scrollbars. */
 .discover-rise-under {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
 }
 
+/* It is a still, not a second running copy: freeze every animation and
+   transition caught in it — the die toss, the Play/Browse gradient sweep, a
+   half-played drawer slide. */
+.discover-rise-under,
+.discover-rise-under * {
+  animation: none !important;
+  transition: none !important;
+}
+
 .discover-rise-under .home-toss {
   display: none;
 }
 
+/* A snapshot clone is a whole `.device-frame__scroll`. Lock it to the backdrop
+   box and clip it — its scroll offset is restored once, by RiseBackdrop, and it
+   is never scrolled again. */
+.discover-rise-under > .device-frame__scroll {
+  height: 100%;
+  overflow: hidden;
+}
+
 /* The opaque panel the real content rides in on — full bleed over the backdrop,
-   under the content. */
+   under the content. Frame-pinned like .discover-rise-under (and for the same
+   reasons); it still rides the discover-rise-in / -out keyframes via translate. */
 .discover-rise-shade {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 1;
   background: var(--neutral-bg);
@@ -353,17 +379,81 @@ button {
   z-index: 2;
 }
 
-/* Discover opens a bundle, a community game or the bundles list by sliding it up
-   from the bottom, so round the two top corners of what rises — 16px, matching
-   the hero's bottom corners — and it reads as a sheet lifting over Discover
-   rather than a hard full-screen cut. The shade carries the corners through the
-   slide (revealing the held-still Discover behind them); the page's own top
-   block keeps them once it has settled. */
+/* A page that rises up from the bottom — a Discover destination, or Play A Game
+   / Add Game / Edit Game Types — rounds its two top corners as it travels, 16px
+   to match the hero's bottom corners, so it reads as a sheet lifting over the
+   screen behind it rather than a hard full-screen cut. The shade carries the
+   corners through the slide (revealing the held-still screen behind them); the
+   page's own top block keeps them once it has settled. */
 .discover-rise-shade,
 .page.discover-rise-page > .scroll-back-header,
-.page.discover-rise-page > .page-header {
+.page.discover-rise-page > .page-header,
+.page.discover-rise-page > .random-game-banner {
   border-top-left-radius: var(--radius-card);
   border-top-right-radius: var(--radius-card);
+}
+
+/* Discover's search view, opened from the magnifier. Two layers over a Discover
+   page that never moves:
+
+     .discover-search-scrim   — a full-screen dim that is already in its final
+                                position on the first frame and only fades its
+                                opacity up (0 -> 1), the same rgba(0,0,0,0.6)
+                                overlay the ⋮ menu / filter drawer use. It marks
+                                Discover as covered without shifting it.
+     .discover-search-panel   — the opaque search surface itself, which slides
+                                up from below the screen to cover the scrim (and
+                                so the whole page) entirely.
+
+   Both run on the search timing — 300ms / cubic-bezier(0.17, 0.84, 0.44, 1),
+   kept in sync with SEARCH_RISE_MS in DiscoverContent.jsx — so the dim and the
+   slide read as one gesture in each direction. The fade lives on a ::before
+   (not the scrim div) so it doesn't composite the panel's own opacity along
+   with it — same reason as .filter-drawer-scrim. Frame-pinned like
+   .discover-rise-shade so the frame's --swipe-travel override applies. */
+.discover-search-scrim {
+  position: fixed;
+  inset: 0;
+  /* Above the Discover page's own sticky header block (z-index 20). */
+  z-index: 50;
+}
+
+.discover-search-scrim::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  animation: filter-scrim-in 300ms cubic-bezier(0.17, 0.84, 0.44, 1) both;
+}
+
+.discover-search-scrim.discover-search-scrim--closing::before {
+  animation: filter-scrim-out 300ms cubic-bezier(0.17, 0.84, 0.44, 1) both;
+}
+
+.discover-search-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: var(--neutral-bg);
+  border-top-left-radius: var(--radius-card);
+  border-top-right-radius: var(--radius-card);
+}
+
+/* Reuses the shared discover-rise-in / -out keyframes (pure translate); same
+   300ms duration as the routed pages but a gentler custom curve. */
+.discover-search-panel.discover-rise-entering {
+  animation: discover-rise-in 300ms cubic-bezier(0.17, 0.84, 0.44, 1) both;
+}
+
+.discover-search-panel.discover-rise-leaving {
+  animation: discover-rise-out 300ms cubic-bezier(0.17, 0.84, 0.44, 1) both;
+}
+
+/* The panel's content scrolls; its header block stays pinned at the top. */
+.discover-search-panel > .page-content {
+  overflow-y: auto;
 }
 
 /* A page on its way down grows the scroll container past its bottom edge, which
@@ -418,7 +508,11 @@ body:has(.page.discover-rise-leaving),
   .page.swipe-entering-from-left > *,
   .page.swipe-entering-from-right > *,
   .page.discover-rise-entering > *,
-  .page.discover-rise-leaving > * {
+  .page.discover-rise-leaving > *,
+  .discover-search-panel.discover-rise-entering,
+  .discover-search-panel.discover-rise-leaving,
+  .discover-search-scrim::before,
+  .discover-search-scrim.discover-search-scrim--closing::before {
     animation: none;
   }
 }
@@ -523,8 +617,10 @@ body:has(.page.discover-rise-leaving),
   margin-bottom: 0;
 }
 
-/* The "Games!" wordmark centred in the banner, in the same centred title slot
-   the type pages use for their hero wordmark. */
+/* "PLAY" centred in the banner, in the same centred title slot the type pages
+   use for their hero wordmark. The word itself is .page-title-eesti (GT Eesti
+   Ultra Bold, all caps), shared with the All Games / Add Game / Discover
+   headers. */
 .random-game-header .page-title {
   display: flex;
   align-items: center;
@@ -532,12 +628,10 @@ body:has(.page.discover-rise-leaving),
   min-height: 48px;
 }
 
-.random-game-wordmark {
-  display: block;
-  height: 38px;
-  width: auto;
-  /* Nudged down 2px to sit optically level with the close/shuffle button glyphs. */
-  transform: translateY(2px);
+/* Dark ink on the bright banner, the same #1a1816 as the close/shuffle glyphs
+   (.random-game-banner .back-link) and the card titles below. */
+.random-game-header .page-title-eesti {
+  color: #1a1816;
 }
 
 /* ------------------------------------------------------------------ *
@@ -795,7 +889,7 @@ body:has(.page.discover-rise-leaving),
 /* ------------------------------------------------------------------ *
  * Icon sizing
  *
- * The base .material-symbols-outlined is 20px and stays there — it is what the
+ * The base .icon is 20px and stays there — it is what the
  * bottom action bar, the Players/Time/Materials stat rows and the list-card
  * meta rows all draw at. The navigational icons run 4px larger: the top bar's
  * back, close, menu, overflow dot, view toggle, shuffle and filter, the search
@@ -803,17 +897,17 @@ body:has(.page.discover-rise-leaving),
  * chevron into a game. Circle containers are unchanged at 48px — this is the
  * glyph inside them only.
  * ------------------------------------------------------------------ */
-.back-link .material-symbols-outlined,
-.icon-btn .material-symbols-outlined,
-.filter-toggle-btn-icon .material-symbols-outlined,
-.search-bar > .material-symbols-outlined {
+.back-link .icon,
+.icon-btn .icon,
+.filter-toggle-btn-icon .icon,
+.search-bar > .icon {
   font-size: 24px;
 }
 
 /* All Games' "Edit Game Types" action. The `category` glyph is bottom-heavy —
    a small triangle over a square and a circle — so it sits geometrically
    centred but reads ~2px low in the 48px circle. Lift it to its optical centre. */
-.all-games-types-btn .material-symbols-outlined {
+.all-games-types-btn .icon {
   transform: translateY(-2px);
 }
 
@@ -833,9 +927,9 @@ body:has(.page.discover-rise-leaving),
 
 /* Edit and delete ride in the same .icon-btn container but are actions on a
    record rather than navigation, and stay at the base size. */
-.icon-btn-label .material-symbols-outlined,
-.icon-btn.danger .material-symbols-outlined,
-.type-list-item-actions .icon-btn .material-symbols-outlined {
+.icon-btn-label .icon,
+.icon-btn.danger .icon,
+.type-list-item-actions .icon-btn .icon {
   font-size: 20px;
 }
 
@@ -968,7 +1062,7 @@ body:has(.page.discover-rise-leaving),
   pointer-events: none;
 }
 
-.select-chevron .material-symbols-outlined {
+.select-chevron .icon {
   font-size: 24px;
 }
 
@@ -1008,12 +1102,24 @@ body:has(.page.discover-rise-leaving),
   white-space: nowrap;
 }
 
-/* The inline type editor's Cancel + Save and the confirm dialog's Cancel +
-   Delete: GT Eesti to match the rest of the app, everything else (the .btn-sm
-   12px size, fills, borders) left as is. */
-.type-editor-actions .btn,
+/* The confirm dialog's Cancel + Delete: GT Eesti to match the rest of the app,
+   everything else (the .btn-sm 12px size, fills, borders) left as is. */
 .modal-actions .btn {
   font-family: 'GT Eesti', sans-serif;
+}
+
+/* The inline type editor's Cancel + Save: sized and set like Add / Edit Game's
+   pair (and the filter drawer's Apply) — GT Eesti, 20px, 48px tall, each taking
+   an equal half of the row full-width — while keeping its own fill and border. */
+.type-editor-actions .btn {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  padding: 0 28px;
+  font-family: 'GT Eesti', sans-serif;
+  font-size: 20px;
+  letter-spacing: 1px;
+  white-space: nowrap;
 }
 
 /* Empty / loading / error states */
@@ -1704,7 +1810,7 @@ body:has(.page.discover-rise-leaving),
   transform: translateX(-50%) scale(0.95);
 }
 
-.sheet-close .material-symbols-outlined {
+.sheet-close .icon {
   font-size: 26px;
 }
 
@@ -1815,6 +1921,18 @@ body:has(.page.discover-rise-leaving),
 
 .filter-drawer.is-closing {
   animation: filter-drawer-out 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Mounted already open (Home returning from a sheet that dropped back down over
+   it): the drawer and its scrim dim were showing the whole time, so land them
+   in place with no slide-in / fade-in. The exit still animates — is-closing
+   wins. See useArrivedOpen in KebabMenu.jsx. */
+.filter-drawer.is-instant:not(.is-closing) {
+  animation: none;
+}
+
+.filter-drawer-scrim.is-instant:not(.is-closing)::before {
+  animation: none;
 }
 
 @keyframes filter-drawer-in {
@@ -1954,9 +2072,15 @@ body:has(.page.discover-rise-leaving),
 
 .sort-select-value {
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--text);
+}
+
+/* The live count trailing a sort label, in the trigger and every menu row —
+   held a size below the label so it reads as a secondary detail. */
+.sort-select-count {
+  font-size: 12px;
 }
 
 /* Same 36px circle and 24px glyph as the card chevron, in the drawer's own
@@ -1974,7 +2098,7 @@ body:has(.page.discover-rise-leaving),
   transition: transform 180ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sort-select-chevron .material-symbols-outlined {
+.sort-select-chevron .icon {
   font-size: 24px;
 }
 
@@ -2023,7 +2147,7 @@ body:has(.page.discover-rise-leaving),
   background: transparent;
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 16px;
   text-align: left;
   cursor: pointer;
 }
@@ -2053,14 +2177,14 @@ body:has(.page.discover-rise-leaving),
   justify-content: center;
   gap: 4px;
   height: 32px;
-  padding: 0 14px;
+  padding: 0 12px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 400;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -2070,12 +2194,30 @@ body:has(.page.discover-rise-leaving),
   color: var(--neutral-bg);
 }
 
+/* Disabled = picking this option would leave zero games given the rest of the
+   current selection. Kept in the row (not hidden) so it still shows what the
+   category could offer, but dimmed and inert. */
+.filter-chip-option:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 /* The close affordance shown inside any selected chip (players, time, game
    type). Nudged into the chip's right padding so the label still reads
    centered. */
 .filter-chip-option__x {
   font-size: 16px;
   margin-right: -4px;
+}
+
+/* Game count trailing each Game Type chip. Same muted grey as the PLAYERS /
+   TIME / GAME TYPE section headings (--text-secondary), held even while the
+   chip is selected so the number stays a quiet secondary detail. */
+.filter-chip-option__count {
+  color: var(--text-secondary);
+  /* Stays regular weight while the chip label went bold — keeps the count a
+     quiet trailing detail rather than part of the label. */
+  font-weight: 400;
 }
 
 /* Floats over the scrolling body rather than docking below it as a separate
@@ -2094,9 +2236,8 @@ body:has(.page.discover-rise-leaving),
   background: none;
 }
 
-/* "Clear All" sits above Apply as a plain underlined text link, the same
-   treatment the list pages' active-filter row uses. Centered over the
-   full-width Apply button rather than left-aligned like that row. */
+/* "Clear All" sits above Apply as its outlined counterpart (see
+   .filter-clear-all), centered over the full-width Apply button. */
 .filter-drawer-clear {
   align-self: center;
 }
@@ -2231,7 +2372,7 @@ body:has(.page.discover-rise-leaving),
   font-weight: 700;
 }
 
-.meta-item .material-symbols-outlined {
+.meta-item .icon {
   color: var(--accent);
   font-size: 18px;
 }
@@ -2412,22 +2553,27 @@ body:has(.page.discover-rise-leaving),
 }
 
 /* The floor for a game's actions — favourite, played, rating, share — used on
-   the random-draw page, the individual game details page, and (as
-   .card-carousel__bar) the list pages' card view: one "actions on a game" bar,
-   wherever a game is being looked at. Sticky rather than fixed so it stays
-   inside the desktop device frame rather than pinning to the browser viewport,
-   and so favouriting or rating never requires scrolling all the way past a
-   long set of rules first.
- *
- * On the draw page specifically, the card above it keeps its full rounded
- * bottom corner and a 16px gap (see .draw-stack__top) — scrolling all the way
- * down clears the card before this bar's floor.
- * Flush to all three outer frame edges, breaking out of .page's gutters and
- * swallowing its bottom padding to reach them. */
+   the two game detail pages (the individual game and the community game), one
+   "actions on a game" bar wherever a game is being looked at. The list pages'
+   card view has its own equivalent, .card-carousel__bar.
+
+   Two things keep it on the bottom edge in every case:
+   - `margin-top: auto` — .page is a full-height flex column and this is its
+     last child, so on a game with sparse details (short rules, no example) the
+     auto margin swallows the leftover space and drops the bar to the floor
+     instead of letting it ride up under the card.
+   - `position: sticky; bottom: 0` — on a game whose rules run long, the page
+     overflows and scrolls; sticky then pins the bar to the bottom of the frame
+     (not the browser viewport) so rating or favouriting never means scrolling
+     to the end first. When content is short the free space is zero and the
+     sticky offset is inert, so the two rules never fight.
+
+   Flush to all three outer frame edges, breaking out of .page's gutters and
+   swallowing its bottom padding to reach them. */
 .draw-actions {
   position: sticky;
   bottom: 0;
-  /* Above every layer of the stack (0–4), including a card being dragged. */
+  margin-top: auto;
   z-index: 5;
   margin-inline: -16px;
   margin-bottom: -16px;
@@ -2473,7 +2619,7 @@ body:has(.page.discover-rise-leaving),
   gap: 12px;
 }
 
-.stat-row .material-symbols-outlined {
+.stat-row .icon {
   color: #33302b;
   margin-top: 1px;
 }
@@ -2546,7 +2692,7 @@ body:has(.page.discover-rise-leaving),
   margin-bottom: 12px;
 }
 
-.search-bar > .material-symbols-outlined {
+.search-bar > .icon {
   margin-right: 4px;
 }
 
@@ -2569,7 +2715,7 @@ body:has(.page.discover-rise-leaving),
   color: var(--text);
 }
 
-.search-bar .material-symbols-outlined {
+.search-bar .icon {
   color: var(--text);
 }
 
@@ -2591,7 +2737,7 @@ body:has(.page.discover-rise-leaving),
   background: var(--neutral-bg);
 }
 
-.search-clear-btn .material-symbols-outlined {
+.search-clear-btn .icon {
   font-size: 18px;
 }
 
@@ -2713,7 +2859,7 @@ body:has(.page.discover-rise-leaving),
 
 .category-hero-header .search-bar input,
 .category-hero-header .search-bar input::placeholder,
-.category-hero-header .search-bar .material-symbols-outlined,
+.category-hero-header .search-bar .icon,
 .category-hero-header .mic-btn,
 .category-hero-header .search-clear-btn {
   color: #1a1816;
@@ -2889,7 +3035,7 @@ body:has(.page.discover-rise-leaving),
   border: 1.5px solid var(--border);
   background: transparent;
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
@@ -2920,21 +3066,33 @@ body:has(.page.discover-rise-leaving),
   height: 20px;
 }
 
-.filter-chip__x .material-symbols-outlined {
+.filter-chip__x .icon {
   font-size: 16px;
 }
 
+/* Clear All is an outlined button, the confirm dialog's Delete button turned
+   inside out: same pill shape and compact size, but stroked white on the
+   page-background fill so it reads as a reset rather than a primary action.
+   GT Eesti to match the app's other buttons. Centered in the filter drawer
+   (see .filter-drawer-clear); inline after the chips in the list pages' row.
+   Height matches the filter chips (32px) with no vertical padding. */
 .filter-clear-all {
-  border: none;
-  background: transparent;
-  color: var(--text);
-  font-weight: 700;
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  border: 1px solid #fff;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-bg);
+  color: #fff;
+  font-family: 'GT Eesti', sans-serif;
+  font-weight: 900;
+  font-size: 14px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  text-decoration: underline;
+  letter-spacing: 1px;
+  text-decoration: none;
   cursor: pointer;
-  padding: 8px 4px;
+  padding: 0 16px;
 }
 
 .filter-clear-all:hover {
@@ -3110,7 +3268,7 @@ body:has(.page.discover-rise-leaving),
   color: #1a1816;
 }
 
-.game-list-item-meta .meta-item .material-symbols-outlined {
+.game-list-item-meta .meta-item .icon {
   color: #1a1816;
 }
 
@@ -3261,7 +3419,6 @@ body:has(.page.discover-rise-leaving),
 .star-rating__star {
   font-size: var(--star-size, 12px);
   color: #1a1816;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
   margin-inline: -4px;
 }
 
@@ -3275,7 +3432,6 @@ body:has(.page.discover-rise-leaving),
 
 .star-rating__star.is-filled {
   color: #1a1816;
-  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
 }
 
 .star-rating__star.is-half {
@@ -3427,9 +3583,8 @@ body:has(.page.discover-rise-leaving),
   cursor: pointer;
 }
 
-.card-carousel__action .material-symbols-outlined {
+.card-carousel__action .icon {
   font-size: 42px;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
   transition: color 120ms ease;
 }
 
@@ -3446,12 +3601,6 @@ body:has(.page.discover-rise-leaving),
 
 .card-carousel__action--rating.is-active {
   color: var(--action-rating);
-}
-
-.card-carousel__action--played.is-active .material-symbols-outlined,
-.card-carousel__action--favorite.is-active .material-symbols-outlined,
-.card-carousel__action--rating.is-active .material-symbols-outlined {
-  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
 }
 
 .card-carousel__action--share:active {
@@ -3503,17 +3652,17 @@ body:has(.page.discover-rise-leaving),
   width: 36px;
   height: 36px;
   border-radius: var(--radius-pill);
-  border: 1px solid #e5e3e0;
-  background: #ffffff;
-  color: #1a1816;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
 }
 
 .card-carousel__rating-back:hover {
-  background: #f5f4f2;
+  background: var(--neutral-bg);
 }
 
-.card-carousel__rating-back .material-symbols-outlined {
+.card-carousel__rating-back .icon {
   font-size: 24px;
 }
 
@@ -3534,17 +3683,12 @@ body:has(.page.discover-rise-leaving),
   cursor: pointer;
 }
 
-.card-carousel__rating-star-btn .material-symbols-outlined {
+.card-carousel__rating-star-btn .icon {
   font-size: 42px;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
 }
 
 .card-carousel__rating-star-btn.is-filled {
   color: var(--action-rating);
-}
-
-.card-carousel__rating-star-btn.is-filled .material-symbols-outlined {
-  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
 }
 
 .card-carousel__rating-star-btn.is-half {
@@ -3564,7 +3708,7 @@ body:has(.page.discover-rise-leaving),
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 28px;
+  margin-bottom: 16px;
 }
 
 .type-list-item {
@@ -3658,8 +3802,8 @@ body:has(.page.discover-rise-leaving),
  * Discover / Community
  *
  * A faked social layer over the real catalog (see src/lib/community.js): every
- * "community" game is a game already in the database, wearing a made-up author
- * and rating. The only genuinely real action is Save, which is a normal
+ * "community" game is a game already in the database, wearing a made-up rating
+ * and saved count. The only genuinely real action is Save, which is a normal
  * favorite toggle.
  *
  * The kebab on All Games opens .kebab-menu — the same right-side drawer as the
@@ -3741,7 +3885,7 @@ body:has(.page.discover-rise-leaving),
   /* With the row now on a 16px right gutter, the chevron's right edge already
      lines up with the right edge of the close-button circle in the header (also
      a 16px inset) — no nudge needed. */
-  /* Same 24px as the chevron on every game card (.icon-btn .material-symbols). */
+  /* Same 24px as the chevron on every game card (.icon-btn .icon). */
   font-size: 24px;
   color: var(--text-secondary);
 }
@@ -3753,20 +3897,20 @@ body:has(.page.discover-rise-leaving),
   margin-bottom: 0;
 }
 
-/* Search view: no back button, no page content — just the top bar and the
-   search bar. The bar sits 12px under the top row (matches the game-type
-   pages), and the big section gap above the results is dropped. The header is
-   also locked in place here — the hook is passed enabled=false — so this
-   guarantees it even if that ever regresses. */
-.discover-page.discover-search-open .page-header {
+/* Search panel: the search bar sits 12px under the top row of buttons (matches
+   the game-type pages), and the big section gap above the results is dropped. */
+.discover-search-panel .page-header {
   margin-bottom: 12px;
 }
 
-.discover-page.discover-search-open .discover-page-content {
+.discover-search-panel .discover-page-content {
   margin-top: 0;
 }
 
-.discover-page.discover-search-open .scroll-back-header {
+/* The panel is its own layer whose body scrolls under a fixed header block, so
+   the header never needs the scroll-back sticky/transform — pin it flat. */
+.discover-search-panel .scroll-back-header {
+  position: static;
   transform: none;
 }
 
@@ -3799,7 +3943,7 @@ body:has(.page.discover-rise-leaving),
    on every open. The block sits 32px below the scope chips — the chips' bottom
    margin is zeroed here, and the 16px comes on top of the scroll-back header's
    own 16px bottom padding (16 + 16 = 32). */
-.discover-page.discover-search-open .discover-scope-chips {
+.discover-search-panel .discover-scope-chips {
   margin-bottom: 0;
 }
 
@@ -3970,7 +4114,9 @@ body:has(.page.discover-rise-leaving),
   flex: 0 0 323px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  /* No flex gap: each row owns the space below it via its own margin-bottom
+     (.bundle-card__count / __title / __blurb), so every gap can be dialled
+     on its own. */
   padding: 16px;
   border: none;
   border-radius: var(--radius-card);
@@ -4012,6 +4158,8 @@ body:has(.page.discover-rise-leaving),
   letter-spacing: 0.8px;
   text-transform: uppercase;
   white-space: nowrap;
+  /* Gap under the "N GAMES" pill, above the title. */
+  margin-bottom: 6px;
 }
 
 .bundle-card__title {
@@ -4021,40 +4169,45 @@ body:has(.page.discover-rise-leaving),
   font-weight: 500;
   font-size: 32px;
   line-height: 32px;
+  /* Gap under the title, above the blurb. */
+  margin-bottom: 6px;
 }
 
 .bundle-card__blurb {
   font-family: var(--font-sans);
   font-size: 16px;
-  line-height: 1.4;
+  line-height: 20px;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   opacity: 0.85;
+  /* Minimum gap under the blurb, above the Save row. On short cards the
+     footer's margin-top:auto opens this up further so the footer still
+     sits on the card's bottom edge. */
+  margin-bottom: 16px;
 }
 
-.bundle-card__curator {
+.bundle-card__saves {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
 }
 
-/* Author byline + Save share one row, pinned to the card's lower edge like the
+/* Saves count + Save share one row, pinned to the card's lower edge like the
    Discover game cards' footer. margin-top:auto eats the slack under the blurb,
-   so there's no empty gap below the author, and every card in a rail lines its
-   footer up regardless of blurb length. padding-top 10px + the card's 6px flex
-   gap = 16px clear above the Save button when the card is full of text. */
+   so every card in a rail lines its footer up regardless of blurb length. The
+   gap above this row is .bundle-card__blurb's margin-bottom, not a padding
+   here. */
 .bundle-card__footer {
   margin-top: auto;
   display: flex;
-  /* Author sits on the button's bottom edge, not centred against it. */
+  /* Count sits on the button's bottom edge, not centred against it. */
   align-items: flex-end;
   gap: 10px;
-  padding-top: 10px;
 }
 
-/* Save sits at the left edge, author (when present) pushed to the right. */
+/* Save sits at the left edge, the saves count pushed to the right. */
 .bundle-card__footer .discover-save-btn {
   margin-right: auto;
 }
@@ -4118,6 +4271,29 @@ body:has(.page.discover-rise-leaving),
   margin-top: 40px;
 }
 
+/* Catch-all at the foot of the feed: a full-width white pill, 60px tall, black
+   text in the app's button face (GT Eesti Ultra Bold caps, 22px), that drops
+   into All Games. 40px above it, matching the gap between the sections. */
+.discover-view-all-btn {
+  margin-top: 40px;
+  width: 100%;
+  height: 60px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: #ffffff;
+  color: #1a1816;
+  font-family: 'GT Eesti', sans-serif;
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.discover-view-all-btn:active {
+  transform: scale(0.98);
+}
+
 /* All-bundles list — the same BundleCard as the Discover rail, but stacked
    full-width instead of a horizontal scroll-snap strip. */
 .bundle-list {
@@ -4139,31 +4315,34 @@ body:has(.page.discover-rise-leaving),
   flex: 1;
 }
 
-/* Card footer: author byline on the left, Save on the right. Lives inside the
-   white .game-list-item, so text is dark ink like the rest of the card. Pinned
-   to the card's lower edge with no divider, matching the bundle cards' footer. */
+/* Card footer: Save on the left, saves count on the right. Lives inside the
+   white .game-list-item, so text is dark ink like the rest of the card. The
+   Top 10 rail stretches every card to the tallest card's height, and
+   margin-top:auto drops this row onto that shared bottom edge (16px above the
+   card's outer edge, via its padding) so it lines up across the whole rail.
+   padding-top is the minimum clear above the Save button; on the tallest card,
+   where the auto margin collapses to 0, it's the only gap. */
 .discover-card-footer {
   margin-top: auto;
   display: flex;
-  /* Author sits on the button's bottom edge, not centred against it. */
+  /* Count sits on the button's bottom edge, not centred against it. */
   align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
-  /* 16px clear above the Save button when the card is full of text. */
   padding-top: 16px;
 }
 
-/* Same weight and ink as the bundle cards' author (.bundle-card__curator), a
-   touch smaller at 14px. */
-.discover-card-byline {
+/* Matches the players/time meta text on the same card: 12px, weight 700, dark
+   ink (see .game-list-item-meta .meta-item). */
+.discover-card-saves {
   min-width: 0;
   font-family: var(--font-sans);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: #1a1816;
 }
 
-/* Outlined pill in the app's button face — GT Eesti Ultra Bold, all caps, 16px,
+/* Outlined pill in the app's button face — GT Eesti Ultra Bold, all caps, 14px,
    36px tall. No fill of its own: it shows the card behind it, the same way the
    "N GAMES" badge and the chevron on the bundle cards do. */
 .discover-save-btn {
@@ -4172,25 +4351,25 @@ body:has(.page.discover-rise-leaving),
   align-items: center;
   justify-content: center;
   gap: 4px;
-  /* Reserve enough width for both "SAVE" and "SAVED" so the row never shifts
-     when the state flips. */
-  min-width: 112px;
+  /* No reserved width: the pill sizes to its content, so it grows a little when
+     "SAVE" becomes "SAVED" (per TJ's request — the count on its right takes up
+     the slack). */
   height: 36px;
-  padding: 0 12px 0 8px;
+  padding: 0 12px;
   border: 1px solid #1a1816;
   border-radius: var(--radius-pill);
   background: transparent;
   color: #1a1816;
   font-family: 'GT Eesti', sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 1px;
   cursor: pointer;
 }
 
-.discover-save-btn .material-symbols-outlined {
-  font-size: 24px;
+.discover-save-btn .icon {
+  font-size: 20px;
 }
 
 /* Saved: a solid fill in the Discover page background (--neutral-bg) with light
@@ -4208,6 +4387,27 @@ body:has(.page.discover-rise-leaving),
   cursor: default;
 }
 
+/* Bundle detail's "Save Bundle" CTA: the same SAVE/SAVED pill as the bundle
+   cards (GT Eesti caps, add/check icon), stretched full width and sized up to
+   48px tall / 20px. It sits on the bundle's accent panel now, so it takes the
+   bundle cards' own palette — a plain white fill, no stroke, unsaved; the
+   shared dark fill + light ink once saved (.discover-save-btn.is-saved). */
+.discover-save-btn--block {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  font-size: 20px;
+  background: #ffffff;
+  border-color: transparent;
+}
+
+/* Every game saved: the pill holds its crisp filled "SAVED BUNDLE" look rather
+   than dimming like an ordinary disabled control — it's a done state. */
+.discover-save-btn--block:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
 /* The wide variant is a full-width CTA carrying a whole sentence ("Save all 12
    to my collection"), not the one-word SAVE/SAVED pill — it keeps the older
    filled, sentence-case, DM Sans treatment at its own taller size. */
@@ -4219,7 +4419,7 @@ body:has(.page.discover-rise-leaving),
   border-color: #d9d6d2;
   background: #ffffff;
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   text-transform: none;
   letter-spacing: normal;
@@ -4227,27 +4427,66 @@ body:has(.page.discover-rise-leaving),
 
 /* Bundle detail. The accent hero bar carries the back button plus a centred
    "BUNDLE" title in the Discover page's own header face (.page-title-eesti);
-   the bundle's name drops into the content below, left-aligned in white.
-   Scoped to .bundle-hero-header so the game-type ("drawing") pages that share
-   .category-hero-header keep their 12px header gap — here it's removed. */
+   the bundle's name, blurb and Save CTA sit in a panel directly below that
+   wears the *same* accent fill, so bar + panel read as one bright block the
+   way the bundle cards do. Scoped to .bundle-hero-header so the game-type
+   ("drawing") pages that share .category-hero-header keep their 12px header
+   gap and rounded bottom — here both are dropped so the panel butts flush. */
 .bundle-hero-header .page-header {
   margin-bottom: 0;
 }
 
+.bundle-hero-header {
+  border-radius: 0;
+}
+
+/* The accent panel under the bar. Its background is set inline from
+   bundle.accent (same value as the bar). Breaks .page's 16px gutters to reach
+   the screen edges, butts flush to the bar, and rounds only its bottom corners
+   — to --radius-card, the value the bar's bottom corners used to carry. */
 .bundle-detail-intro {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin: 14px 0 18px;
+  margin: 0 -16px 18px;
+  padding: 8px 16px 20px;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
 }
 
+/* The bundle's game list is a plain .game-list, which stacks a 16px flex gap
+   on top of the global +12px sibling margin. Match the Discover feed: kill the
+   gap so cards sit 12px apart, the sibling margin alone. */
+.bundle-detail-games {
+  gap: 0;
+}
+
+/* "6 GAMES" chip — the bundle cards' count pill exactly (.bundle-card__count):
+   frosted 50% white on the accent, dark ink, uppercase micro-type. */
+.bundle-detail-count {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #1a1816;
+}
+
+/* Title / blurb / saves line all take the bundle cards' treatment: dark ink on
+   the accent, the blurb knocked back to 85% like .bundle-card__blurb. */
 .bundle-detail-title {
   margin: 0;
   font-family: var(--font-header);
   font-weight: 500;
   font-size: 32px;
   line-height: 1.05;
-  color: var(--text);
+  color: #1a1816;
 }
 
 .bundle-detail-blurb {
@@ -4255,7 +4494,8 @@ body:has(.page.discover-rise-leaving),
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.5;
-  color: var(--text);
+  color: #1a1816;
+  opacity: 0.85;
 }
 
 .bundle-detail-curator {
@@ -4263,18 +4503,7 @@ body:has(.page.discover-rise-leaving),
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-secondary);
-}
-
-/* Community game detail — sits inside the white .details-card, so dark ink. */
-.details-card .community-detail-byline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 2px 0 10px;
-  font-family: var(--font-sans);
-  font-size: 14px;
-  color: #6e6a63;
+  color: #1a1816;
 }
 
 .details-card .community-detail-rating {
@@ -4373,8 +4602,19 @@ body:has(.page.discover-rise-leaving),
     /* Clip content to the frame, but do NOT scroll here: the transform below
        makes this the containing block for fixed descendants, and a fixed child
        of a *scrolling* transformed box scrolls away with the content instead of
-       staying pinned. The inner .device-frame__scroll does the scrolling. */
-    overflow: hidden;
+       staying pinned. The inner .device-frame__scroll does the scrolling.
+
+       `clip`, not `hidden`, and that difference is load-bearing. `hidden` still
+       leaves a real scrollport that nothing shows a bar for but anything can
+       scroll programmatically — and something always does: focusing a control
+       inside a panel that is still parked off the frame (Discover's search
+       input, the ⋮ menu's close button) makes the browser scroll this box to
+       chase it, dragging every fixed overlay along and cancelling the very
+       slide that was about to reveal it. `clip` removes the scrollport
+       entirely, so the box can never be scrolled by anyone. The focus sites
+       also pass `preventScroll`; this is the backstop that keeps the next one
+       from reintroducing the bug. */
+    overflow: clip;
     /* Establishes the containing block that traps fixed descendants inside the
        frame so the FAB / A-Z index / modal resolve to it and stay locked. */
     transform: translateZ(0);

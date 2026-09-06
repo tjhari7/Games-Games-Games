@@ -2,38 +2,46 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
 import BundleCard from '../components/BundleCard.jsx';
-import DiscoverRiseBackdrop from '../components/DiscoverRiseBackdrop.jsx';
 import { api } from '../lib/api.js';
-import { useBundleSave } from '../lib/useBundleSave.js';
-import { useDiscoverRiseSwipe } from '../lib/pageSwipe.js';
+import { useDiscoverSaves } from '../lib/discoverSaves.js';
+import { useMenuOverlaySwipe } from '../lib/pageSwipe.js';
 import { BUNDLES, bundleGames } from '../lib/community.js';
 
 // Every curated bundle in one place — the full-list companion to Discover's
-// horizontal Bundles rail. Same BundleCard, stacked full-width; tapping one
-// opens its detail page, back returns to Discover.
+// horizontal Bundles rail. Same BundleCard, stacked full-width. Opened from
+// Discover, it slides in from the right over a stationary Discover; tapping a
+// bundle opens its detail page the same way, and back slides straight off to
+// the right — the same motion as the pages launched from Home's ⋮ menu.
 export default function AllBundles() {
   const navigate = useNavigate();
-  const { swipeClass, rising, startBack, rootProps } = useDiscoverRiseSwipe('/discover');
+  const { swipeClass, startBack, rootProps } = useMenuOverlaySwipe('/discover');
   const [games, setGames] = useState(() => api.getCachedGames() || []);
-  const { isBundleSaved, toggleBundleSave } = useBundleSave();
+  const { isBundleSaved, toggleBundleSave } = useDiscoverSaves();
 
   useEffect(() => {
     api.getGames().then(setGames).catch(() => {});
   }, []);
 
-  const counts = useMemo(() => {
-    const out = {};
+  // Each bundle's game ids — "saved" is derived from these (every game saved),
+  // matching the Discover rail and the bundle detail page. `counts` reads the
+  // same map.
+  const bundleGameIds = useMemo(() => {
+    const map = {};
     BUNDLES.forEach((b) => {
-      out[b.id] = bundleGames(b.id, games).length;
+      map[b.id] = bundleGames(b.id, games).map((g) => g.id);
     });
-    return out;
+    return map;
   }, [games]);
 
   return (
-    <div className={`page discover-rise-page${swipeClass}`} {...rootProps}>
-      {rising && <DiscoverRiseBackdrop />}
+    <div className={`page${swipeClass}`} {...rootProps}>
       <div className="scroll-back-header">
-        <PageHeader title="Bundles" centered onBack={startBack} />
+        <PageHeader
+          title="Bundles"
+          titleSlot={<span className="page-title-eesti">Bundles</span>}
+          centered
+          onBack={startBack}
+        />
       </div>
 
       <div className="page-content">
@@ -42,10 +50,10 @@ export default function AllBundles() {
             <BundleCard
               key={b.id}
               bundle={b}
-              count={counts[b.id] || 0}
-              isSaved={isBundleSaved(b.id)}
-              onToggleSave={() => toggleBundleSave(b.id)}
-              onOpen={() => navigate(`/discover/bundles/${b.id}`, { state: { discoverRise: true } })}
+              count={(bundleGameIds[b.id] || []).length}
+              isSaved={isBundleSaved(bundleGameIds[b.id] || [])}
+              onToggleSave={() => toggleBundleSave(bundleGameIds[b.id] || [])}
+              onOpen={() => navigate(`/discover/bundles/${b.id}`, { state: { swipeForwardFromRight: true } })}
             />
           ))}
         </div>

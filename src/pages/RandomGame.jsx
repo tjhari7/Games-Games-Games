@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
+import Icon from '../components/Icon.jsx';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
-import { useHorizontalSwipeToHome } from '../lib/pageSwipe.js';
+import { useDiscoverRiseSwipe } from '../lib/pageSwipe.js';
 import GameCardCarousel from '../components/GameCardCarousel.jsx';
-import gamesWordmark from '../assets/Games_01.svg';
+import RiseBackdrop from '../components/RiseBackdrop.jsx';
 
 // Play A Game is the card view with the browsing taken out of it: the same
 // swipeable deck and the same actions bar, but the order is shuffled on arrival
 // so the card in front of you is a draw rather than a place in an alphabet.
-// Swiping sideways is the next draw, and so is the shuffle button — the deck is
-// already in random order, so "another one" is simply the card after this one.
+// Swiping sideways is the next draw; the shuffle button is a bigger one — it
+// spins the deck past a random handful of cards and eases onto a new one (see
+// the carousel's `spin` control).
 
 // Fisher-Yates, on a copy: the games come back in title order and this page is
 // the one place that must not show them that way.
@@ -35,15 +37,16 @@ function RandomGameHeader({ onBack, onShuffle }) {
             sheet-close). Back arrow here would suggest a hierarchy the page
             isn't part of. */}
         <button className="back-link" onClick={onBack} aria-label="Close">
-          <span className="material-symbols-outlined">close</span>
+          <Icon name="close" />
         </button>
 
-        {/* The "Games!" wordmark, sitting in the same centred title slot the
-            type pages give their wordmark. .page-header-centered pins the close
-            and shuffle buttons left and right, so the h1 spans the full width
-            and the mark lands dead centre between them. */}
+        {/* "PLAY" in GT Eesti Ultra Bold — the same centred title treatment the
+            All Games / Add Game / Discover headers use (.page-title-eesti).
+            .page-header-centered pins the close and shuffle buttons left and
+            right, so the h1 spans the full width and the word lands dead centre
+            between them. */}
         <h1 className="page-title">
-          <img className="random-game-wordmark" src={gamesWordmark} alt="Games!" />
+          <span className="page-title-eesti">Play</span>
         </h1>
 
         <div className="details-header-actions">
@@ -61,7 +64,7 @@ function RandomGameHeader({ onBack, onShuffle }) {
             disabled={!onShuffle}
             aria-label="Draw another game"
           >
-            <span className="material-symbols-outlined">shuffle</span>
+            <Icon name="shuffle" />
           </button>
         </div>
       </div>
@@ -70,10 +73,10 @@ function RandomGameHeader({ onBack, onShuffle }) {
 }
 
 export default function RandomGame() {
-  // Opened from Home, and sits to its left like the menu pages: it comes in
-  // from the left on the way in and slides back off to the left on the way out,
-  // Home returning from the right. See lib/pageSwipe.js.
-  const { startBack, swipeClass, rootProps } = useHorizontalSwipeToHome();
+  // Opened from Home's Play A Game button: it rises up from the bottom of the
+  // screen over Home and drops straight back down on close. See
+  // useDiscoverRiseSwipe in lib/pageSwipe.js.
+  const { startBack, swipeClass, rising, rootProps } = useDiscoverRiseSwipe('/');
   const navigate = useNavigate();
 
   // Seed straight from the cache Home warmed, so the real deck is on screen from
@@ -85,7 +88,8 @@ export default function RandomGame() {
   });
   const [loading, setLoading] = useState(() => !api.getCachedGames());
   const [error, setError] = useState(null);
-  // How the shuffle button reaches into the carousel. See its `controls` prop.
+  // How the shuffle button reaches into the carousel to trigger a spin. See its
+  // `controls` prop.
   const carousel = useRef(null);
 
   // Shuffled once, on arrival: re-drawing the order under a deck the reader is
@@ -115,8 +119,9 @@ export default function RandomGame() {
   const openGame = (game) => navigate(`/games/${game.id}`);
 
   return (
-    <div className={`page random-game-page${swipeClass}`} {...rootProps}>
-      <RandomGameHeader onBack={startBack} onShuffle={deck.length > 1 ? () => carousel.current?.next() : null} />
+    <div className={`page random-game-page discover-rise-page${swipeClass}`} {...rootProps}>
+      {rising && <RiseBackdrop />}
+      <RandomGameHeader onBack={startBack} onShuffle={deck.length > 1 ? () => carousel.current?.spin() : null} />
 
       {/* One wrapper, mounted from the first frame, so the deck and its bar
           ride in on the same clock as the header instead of starting their

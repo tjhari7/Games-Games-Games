@@ -1,4 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { resetDiscoverSaves } from './lib/discoverSaves.js';
 import Home from './pages/Home.jsx';
 import RandomGame from './pages/RandomGame.jsx';
 import GameDetails from './pages/GameDetails.jsx';
@@ -25,10 +27,28 @@ import AllBundles from './pages/AllBundles.jsx';
 // away with the content instead of staying pinned. So the content scrolls inside
 // .device-frame__scroll — which has no transform, so fixed chrome still resolves
 // to the frame and stays locked while the list scrolls underneath.
+// Discover's "saved" state (lib/discoverSaves.js) is per-visit: it persists
+// while you move around inside /discover — feed → a bundle → back → another
+// bundle — and clears the moment navigation leaves the /discover subtree, so
+// the next visit opens with everything unsaved.
+function DiscoverSavesReset() {
+  const { pathname } = useLocation();
+  const wasInDiscover = useRef(false);
+
+  useEffect(() => {
+    const inDiscover = pathname === '/discover' || pathname.startsWith('/discover/');
+    if (wasInDiscover.current && !inDiscover) resetDiscoverSaves();
+    wasInDiscover.current = inDiscover;
+  }, [pathname]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <div className="device-frame">
       <div className="device-frame__scroll">
+        <DiscoverSavesReset />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/random" element={<RandomGame />} />
