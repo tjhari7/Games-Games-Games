@@ -839,6 +839,12 @@ body:has(.page.discover-rise-leaving),
   letter-spacing: 1px;
   font-size: 14px;
   cursor: pointer;
+  /* The whole tile is one button: no highlighting its text or dragging across
+     it, and no iOS long-press menu on the artwork. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   transition: opacity 0.15s ease, transform 0.05s ease;
 }
 
@@ -1614,6 +1620,11 @@ body:has(.page.discover-rise-leaving),
   max-width: 100%;
   height: auto;
   display: block;
+  /* Touches land on the tile, not the image, so the artwork can't be grabbed. */
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Sound and Guessing export at 20px tall; nudge them up so their shorter
