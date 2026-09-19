@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { getScrollTop, offsetWithinScroller } from './pageScroll.js';
+import { isRotationCovered, onRotationRestored } from './orientationCover.js';
 
 // "Scroll back" page chrome, the pattern patagonia.com uses. A list page keeps
 // its header, back button, overflow menu, search bar and filter in one sticky
@@ -107,6 +108,11 @@ export function useScrollBackHeader(enabled = true) {
 
     function update() {
       frame = 0;
+      // The phone is sideways behind the "Turn your phone upright" cover, or has
+      // just come back and is being put back where it was. Any scroll here is
+      // the rotation re-laying the page out, not the reader — hold the block
+      // exactly as it was, so it is still in the same state on return.
+      if (isRotationCovered()) return;
       const y = Math.max(0, getScrollTop());
       const delta = y - lastY;
       lastY = y;
@@ -158,12 +164,29 @@ export function useScrollBackHeader(enabled = true) {
     }
 
     function onResize() {
+      if (isRotationCovered()) return;
       height = el.offsetHeight;
       // Both scrollers are already listened to, so crossing the breakpoint needs
       // no rebind — just re-measure against whichever one is now live and settle
       // the block to the position the content has actually left it at.
       measureFlowTop();
       settle();
+    }
+
+    // iOS Safari and Chrome fire `resize` every time their toolbars slide in or
+    // out — and scrolling back up is exactly what brings the toolbar back. Only
+    // the height of the viewport changed then; the block and the content did not
+    // move. Settling on it snapped the block fully off the top mid-reveal (and
+    // cancelled its slide), so the very next scroll tick brought it in a second
+    // time: the "bounce". Desktop never fires that resize, which is why it was
+    // clean there. A resize is only worth acting on when the width changed — a
+    // rotation, or the frame breakpoint being crossed — since that is what can
+    // reflow the header and move where the content sits.
+    let lastWidth = window.innerWidth;
+    function onWindowResize() {
+      if (window.innerWidth === lastWidth) return;
+      lastWidth = window.innerWidth;
+      onResize();
     }
 
     pinOpenRef.current = () => {
@@ -186,6 +209,15 @@ export function useScrollBackHeader(enabled = true) {
       upTravel = 0;
     };
 
+    // The position is back: take it as the new baseline without touching the
+    // block, so the next real scroll measures a gesture-sized delta.
+    const stopWatchingRotation = onRotationRestored(() => {
+      height = el.offsetHeight;
+      measureFlowTop();
+      lastY = Math.max(0, getScrollTop());
+      upTravel = 0;
+    });
+
     measureFlowTop();
     update();
 
@@ -194,15 +226,16 @@ export function useScrollBackHeader(enabled = true) {
     const observer = new ResizeObserver(onResize);
     observer.observe(el);
     scrollTargets.forEach((t) => t.addEventListener('scroll', onScroll, { passive: true }));
-    window.addEventListener('resize', onResize);
+    window.addEventListener('resize', onWindowResize);
 
     return () => {
       pinOpenRef.current = null;
       releasePinRef.current = null;
+      stopWatchingRotation();
       cancelAnimationFrame(frame);
       observer.disconnect();
       scrollTargets.forEach((t) => t.removeEventListener('scroll', onScroll));
-      window.removeEventListener('resize', onResize);
+      window.removeEventListener('resize', onWindowResize);
     };
   }, [enabled]);
 

@@ -379,20 +379,6 @@ button {
   z-index: 2;
 }
 
-/* A page that rises up from the bottom — a Discover destination, or Play A Game
-   / Add Game / Edit Game Types — rounds its two top corners as it travels, 16px
-   to match the hero's bottom corners, so it reads as a sheet lifting over the
-   screen behind it rather than a hard full-screen cut. The shade carries the
-   corners through the slide (revealing the held-still screen behind them); the
-   page's own top block keeps them once it has settled. */
-.discover-rise-shade,
-.page.discover-rise-page > .scroll-back-header,
-.page.discover-rise-page > .page-header,
-.page.discover-rise-page > .random-game-banner {
-  border-top-left-radius: var(--radius-card);
-  border-top-right-radius: var(--radius-card);
-}
-
 /* Discover's search view, opened from the magnifier. Two layers over a Discover
    page that never moves:
 
@@ -437,8 +423,6 @@ button {
   flex-direction: column;
   padding: 16px;
   background: var(--neutral-bg);
-  border-top-left-radius: var(--radius-card);
-  border-top-right-radius: var(--radius-card);
 }
 
 /* Reuses the shared discover-rise-in / -out keyframes (pure translate); same
@@ -1672,7 +1656,7 @@ body:has(.page.discover-rise-leaving),
  *
  * The page is pinned to exactly one screen and the *panel* scrolls, so the grab
  * strip stays reachable however far down the list the reader is and the tiles
- * disappear under the panel's rounded top edge rather than past the screen's.
+ * disappear under the panel's top edge rather than past the screen's.
  * ------------------------------------------------------------------ */
 .page-sheet {
   padding: 0;
@@ -1722,10 +1706,9 @@ body:has(.page.discover-rise-leaving),
   min-height: 0;
   display: flex;
   flex-direction: column;
-  /* Shows through the panel's rounded top corners, and fills the strip above
-     it. Lives here rather than on .page so it travels with the swipe — the
+  /* Fills the strip above the panel. Lives here rather than on .page so it travels with the swipe — the
      animation moves .page's children, not .page itself. */
-  background: #000000;
+  background: #1a1816;
   /* The containing block for the close button, which floats over the panel
      rather than scrolling with it. */
   position: relative;
@@ -1733,7 +1716,7 @@ body:has(.page.discover-rise-leaving),
 
 /* The pull-to-close target: tap it or drag it down. It reads as the underside
    of the page above, lifted to make room for the sheet — hence the rounded
-   bottom corners and the black gap between it and the panel.
+   bottom corners and the near-black (#1a1816) gap between it and the panel.
    `touch-action: none` rather than `pan-y`: the whole point of a drag here is
    to move the sheet, so the browser must not claim it for a scroll first. */
 .sheet-grab {
@@ -1769,7 +1752,6 @@ body:has(.page.discover-rise-leaving),
      browser's own back gesture. */
   overscroll-behavior: contain;
   background: var(--neutral-bg);
-  border-radius: 24px 24px 0 0;
   padding: 16px;
   /* Clear the close button, so the last row of tiles can be scrolled out from
      under it instead of resting permanently beneath it. */
@@ -1911,7 +1893,11 @@ body:has(.page.discover-rise-leaving),
                           scrolling body rather than docking below it */
   width: min(86%, 340px);
   height: 100%;
-  background: var(--surface);
+  /* The page's own color, not the lighter --surface. On iPhone Safari the status
+     bar and toolbar take the page color (--neutral-bg) and nothing can dim them,
+     so a lighter panel read as a mismatched slab beside the bars. One fill for
+     both panels that use this shell: the filters and the ⋮ menu. */
+  background: var(--neutral-bg);
   display: flex;
   flex-direction: column;
   box-shadow: -12px 0 28px rgba(0, 0, 0, 0.5);
@@ -2915,7 +2901,9 @@ body:has(.page.discover-rise-leaving),
    equivalent: its own "#"/letter headings already carry that role. */
 .category-hero-count {
   text-align: center;
-  margin: 12px 0;
+  /* No bottom margin: the card's air below this line comes from the carousel
+     track's own padding, so it can match the air under the card. */
+  margin: 12px 0 0;
   font-family: var(--font-sans);
   font-weight: 700;
   font-size: 12px;
@@ -2930,11 +2918,46 @@ body:has(.page.discover-rise-leaving),
   display: none;
 }
 
+/* Even air above and below the card on Play, measured from the bottom of the
+   banner down to the card and from the card down to the action bar. The banner's
+   own 16px bottom margin and the carousel's 12px top margin used to sit above the
+   track, so the card looked pushed down from the banner; with both gone the track
+   starts flush under it and the card, centred in the track, is centred between
+   the two. The 16px of padding top and bottom is the least air either side ever
+   gets: on a tall phone the gaps grow together, on a short one the card gives way
+   and they stay level. Same rule as the type pages' card view. */
+.random-game-page .random-game-banner {
+  margin-bottom: 0;
+}
+
+.random-game-page .card-carousel {
+  margin-top: 0;
+}
+
+.random-game-page .card-carousel__track {
+  padding-block: 16px;
+}
+
 /* The carousel's own "N of 12" swipe-position readout is redundant with the
    "12 Games" line above it, so the hero pages hide it. Home's Surprise Me deck
    is not a hero page and keeps GameCardCarousel's counter as-is. */
 .category-hero-page .card-carousel__counter {
   display: none;
+}
+
+/* Even air above and below the card, measured from the "N Games" line down to the
+   card and from the card down to the action bar. The line hangs 12px under the
+   header with nothing beneath it, and the carousel starts right at its bottom
+   edge, so the card — centred in the track — is centred between the two. The
+   16px of padding top and bottom is the least air either side ever gets: on a
+   tall phone the gaps grow together, on a short one the card gives way and they
+   stay level at 16px. */
+.category-hero-page .card-carousel {
+  margin-top: 0;
+}
+
+.category-hero-page .card-carousel__track {
+  padding-block: 16px;
 }
 
 /* Floating action button for the primary "add" action. Wears the same
@@ -3244,6 +3267,7 @@ body:has(.page.discover-rise-leaving),
 
 .game-list-item-title {
   font-family: var(--font-header);
+  font-weight: 500;
   font-size: 32px;
   line-height: 32px;
   color: #1a1816;
@@ -4686,5 +4710,114 @@ body:has(.page.discover-rise-leaving),
 
   .device-frame .details-title {
     font-size: 40px;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * No-scroll screens (phones)
+ *
+ * Home, the ⋮ menu, Play, and the card view of every type page (plus Favorites) are
+ * fixed screens: nothing on them should ever move the page. Left alone they
+ * did on iPhone Safari, for two reasons:
+ *   - #root is sized to 100vh, which Safari measures with its toolbar
+ *     collapsed — taller than what is actually on screen — so the document
+ *     ends up a toolbar-height longer than the screen and drags.
+ *   - Nothing gave the page a definite height, so a card view whose content
+ *     came to a few pixels more than the screen (its card is a fixed 438px)
+ *     simply grew the page instead of letting the card give way.
+ * Locking the document and pinning #root to the dynamic viewport (100dvh, the
+ * height actually visible) fixes both: the height becomes definite, so the card
+ * track shrinks to fit, and there is nothing left to scroll.
+ *
+ * Phones only. The desktop device frame is its own 812px scroller and is left
+ * as it was. Scoped with :has() to the real route element (a direct child of the
+ * scroller) so the inert copies of Home the Game Types sheet keeps behind it
+ * don't lock pages they aren't the current screen of. The menu rule is on its
+ * header because the drawer is portalled out of the page, and it protects the
+ * ⋮ menu on list pages too — a scrolled list must not drag behind an open menu.
+ * ------------------------------------------------------------------ */
+@media (max-width: 600px) {
+  html:has(.device-frame__scroll > .page > .home),
+  html:has(.device-frame__scroll > .page.category-hero-page > .page-content > .card-carousel),
+  html:has(.device-frame__scroll > .page.random-game-page > .page-content > .card-carousel),
+  html:has(.kebab-menu-header),
+  body:has(.device-frame__scroll > .page > .home),
+  body:has(.device-frame__scroll > .page.category-hero-page > .page-content > .card-carousel),
+  body:has(.device-frame__scroll > .page.random-game-page > .page-content > .card-carousel),
+  body:has(.kebab-menu-header) {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  body:has(.device-frame__scroll > .page > .home) #root,
+  body:has(.device-frame__scroll > .page.category-hero-page > .page-content > .card-carousel) #root,
+  body:has(.device-frame__scroll > .page.random-game-page > .page-content > .card-carousel) #root {
+    height: 100vh; /* fallback for Safari before 15.4 */
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  /* Each link of the flex chain from #root down to the page has to be allowed to
+     shrink below its content, or the definite height above never reaches the
+     card track. */
+  body:has(.device-frame__scroll > .page > .home) :is(.device-frame, .device-frame__scroll, .page),
+  body:has(.device-frame__scroll > .page.category-hero-page > .page-content > .card-carousel)
+    :is(.device-frame, .device-frame__scroll, .page),
+  body:has(.device-frame__scroll > .page.random-game-page > .page-content > .card-carousel)
+    :is(.device-frame, .device-frame__scroll, .page) {
+    min-height: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Portrait only
+ *
+ * The app is designed as a portrait phone experience. Browsers on iOS won't let
+ * a page lock the screen orientation, so a phone turned sideways gets this cover
+ * instead of the layout reflowing to the wider screen. The markup lives in
+ * index.html, outside React, so it is there on every page. Touch phones only:
+ * `pointer: coarse` keeps a short desktop window out of it, and the height cap
+ * keeps iPads (which are taller than 500px even sideways) out of it.
+ * ------------------------------------------------------------------ */
+.rotate-lock {
+  display: none;
+}
+
+/* Stops iOS inflating text when the phone is turned, which is the other way the
+   layout used to shift on rotation. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (orientation: landscape) and (pointer: coarse) and (max-height: 500px) {
+  .rotate-lock {
+    position: fixed;
+    inset: 0;
+    /* Over everything, including the confirm modal (50) and the menu drawer. */
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--neutral-bg);
+    color: var(--text);
+    text-align: center;
+  }
+
+  .rotate-lock__icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .rotate-lock__title {
+    margin: 0;
+    /* GT Eesti Ultra Bold, the button and menu-row typeface. */
+    font-family: 'GT Eesti', sans-serif;
+    font-weight: 900;
+    font-size: 32px;
+    line-height: 1.1;
   }
 }

@@ -24,6 +24,7 @@ import { useFavoriteGames } from '../lib/useFavoriteGames.js';
 import { useGameRatings } from '../lib/useGameRatings.js';
 import { useMarkedPlayed } from '../lib/useMarkedPlayed.js';
 import { SORT_ALPHA, SORT_OPTIONS, sortGames, sortLabel, sortEmptyMessage, sortOptionCounts } from '../lib/sortGames.js';
+import { useShuffledOrder } from '../lib/useShuffledOrder.js';
 import StarRating from '../components/StarRating.jsx';
 
 const SpeechRecognition =
@@ -75,6 +76,14 @@ export default function CategoryGames() {
   const sortedGames = useMemo(
     () => (alphaSort ? games : sortGames(games, sort, { getRating, isPlayed, isFavorite })),
     [games, sort, alphaSort, getRating, isPlayed, isFavorite],
+  );
+  // The cards open on a different game each visit: unless a sort was chosen in
+  // the list, they run in a random order fixed for as long as this page stays
+  // open. The list itself is always alphabetical. See lib/useShuffledOrder.js.
+  const shuffleGames = useShuffledOrder(`type:${typeId}`);
+  const cardGames = useMemo(
+    () => (alphaSort ? shuffleGames(games) : sortedGames),
+    [games, alphaSort, sortedGames, shuffleGames],
   );
   // What each option in the Sort By dropdown would leave standing, read off
   // this same pre-sort `games` list — whatever search/players/time have
@@ -451,7 +460,7 @@ export default function CategoryGames() {
           <p className="state-message">{sortEmptyMessage(sort)}</p>
         ) : cardView ? (
           <GameCardCarousel
-            games={sortedGames}
+            games={cardGames}
             onOpen={(g) => navigate(`/games/${g.id}`)}
             onEdit={(g) => navigate(`/games/${g.id}`)}
           />

@@ -14,6 +14,16 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Shown only when a touch phone is held sideways (see .rotate-lock in
+         index.css). Browsers on iOS can't truly lock the screen to portrait, so
+         this covers the app instead of letting it reflow to the wider screen. -->
+    <div class="rotate-lock" role="alert">
+      <svg class="rotate-lock__icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="14" y="4" width="20" height="40" rx="4" />
+        <path d="M21 8h6" />
+      </svg>
+      <h1 class="rotate-lock__title">Turn your phone upright</h1>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

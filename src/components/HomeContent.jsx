@@ -508,9 +508,9 @@ export default function HomeContent({ onGo = NOOP }) {
           <LogoLetters />
         </div>
         <p className="home-subtitle" ref={subtitleRef}>
-          All your favorite games together,
+          All your party games, in your pocket.
           <br />
-          now you never have to remember.
+          Get ready for a good time, let's play.
         </p>
       </div>
 
